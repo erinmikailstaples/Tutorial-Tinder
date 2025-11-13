@@ -53,6 +53,19 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 - 10-minute caching to prevent rate limits
 - No API key required (billed to Replit credits)
 
+### Preflight Check System
+- **Automated Repository Analysis**: Before launching in Replit, analyzes repositories for compatibility
+- Clones repo to temporary directory (shallow clone, depth=1) for file inspection
+- Detects language and framework (Node.js, Python, Docker)
+- Identifies manifest files (package.json, requirements.txt, pyproject.toml, .replit)
+- Infers recommended run commands based on detected environment
+- Calculates confidence score (0-1) for Replit compatibility
+- Shows modal with analysis results:
+  - High confidence (≥0.8): Ready to launch
+  - Medium confidence (0.5-0.8): May need manual configuration
+  - Low confidence (<0.5): Not recommended, suggests viewing on GitHub instead
+- Security features: origin validation, size/time limits, automatic cleanup, no code execution
+
 ## Tech Stack
 
 ### Frontend
@@ -69,6 +82,8 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 - Node.js + Express
 - Octokit (GitHub REST API)
 - OpenAI API via Replit AI Integrations (GPT-5)
+- simple-git for repository cloning
+- tmp for secure temporary directory management
 - In-memory storage for session data
 
 ## Architecture
@@ -85,7 +100,9 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 9. User interactions (save/skip) stored in localStorage
 10. **Save action** stars repo on GitHub via POST `/api/star/:owner/:repo`
 11. Swipe gestures trigger animations and callbacks
-12. Launch button opens `https://replit.com/github.com/:owner/:repo` in new tab
+12. **Launch action** triggers preflight check via POST `/api/preflight`
+13. Preflight modal displays analysis results with confidence score
+14. User confirms launch → opens `https://replit.com/github.com/:owner/:repo` in new tab
 
 ### API Endpoints
 - `GET /api/lists` - Fetches available curated lists from configuration
@@ -95,6 +112,7 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 - `GET /api/star/:owner/:repo` - Checks if repository is starred by authenticated user
 - `POST /api/star/:owner/:repo` - Stars repository on GitHub for authenticated user
 - `DELETE /api/star/:owner/:repo` - Unstars repository on GitHub for authenticated user
+- `POST /api/preflight` - Analyzes repository for Replit compatibility (clones, detects language, returns confidence score)
 
 ### GitHub Integration
 - Uses Replit GitHub connector for authenticated requests
@@ -115,6 +133,7 @@ client/
 │   │   ├── repo-card.tsx    # Individual repo card
 │   │   ├── swipeable-card.tsx # Swipe gesture wrapper
 │   │   ├── keyboard-shortcuts.tsx # Keyboard hints
+│   │   ├── preflight-modal.tsx # Preflight analysis results dialog
 │   │   └── empty-state.tsx  # No more repos state
 │   ├── pages/
 │   │   ├── landing.tsx      # Hero and features
@@ -130,13 +149,14 @@ client/
 server/
 ├── ai.ts                    # OpenAI integration for project suggestions
 ├── github.ts                # GitHub API integration (starring, README, repos)
+├── preflight.ts             # Repository analysis and Replit compatibility detection
 ├── routes.ts                # API endpoints
 ├── storage.ts               # In-memory storage interface
 ├── index.ts                 # Express server setup
 └── vite.ts                  # Vite dev server
 
 shared/
-└── schema.ts                # TypeScript types and Zod schemas
+└── schema.ts                # TypeScript types and Zod schemas (includes PreflightResult)
 
 design_guidelines.md         # Design system documentation
 replit.md                    # This file

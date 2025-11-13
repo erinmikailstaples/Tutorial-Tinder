@@ -165,13 +165,14 @@ export default function Deck() {
 
   // Mutation for preflight check
   const preflightMutation = useMutation({
-    mutationFn: async (repo: Repository) => {
+    mutationFn: async (repo: Repository): Promise<PreflightResult> => {
       const [owner, repoName] = repo.full_name.split('/');
-      return apiRequest('POST', '/api/preflight', {
+      const response = await apiRequest('POST', '/api/preflight', {
         owner,
         repo: repoName,
         fullName: repo.full_name,
       });
+      return response.json();
     },
     onSuccess: (data: PreflightResult) => {
       setPreflightResult(data);
