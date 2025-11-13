@@ -65,23 +65,26 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 
 ### Data Flow
 1. User lands on `/` - sees hero and features
-2. Clicks "Start Swiping" → navigates to `/deck`
-3. Frontend fetches repos from `/api/repos`
-4. For each repo, README preview fetched from `/api/readme/:owner/:repo`
-5. README previews cached to avoid duplicate requests
-6. User interactions (save/skip) stored in localStorage
-7. Swipe gestures trigger animations and callbacks
-8. Launch button opens `https://replit.com/github/:owner/:repo` in new tab
+2. Clicks "Start Swiping" → navigates to `/select-list`
+3. User chooses from curated lists or pastes custom GitHub starred list URL
+4. After selection → navigates to `/deck?listId=<id>`
+5. Frontend fetches repos from `/api/repos?listId=<id>`
+6. For each repo, README preview fetched from `/api/readme/:owner/:repo`
+7. README previews cached to avoid duplicate requests
+8. User interactions (save/skip) stored in localStorage
+9. Swipe gestures trigger animations and callbacks
+10. Launch button opens `https://replit.com/github.com/:owner/:repo` in new tab
 
 ### API Endpoints
-- `GET /api/repos` - Fetches starred repositories from GitHub user "erinmikailstaples"
+- `GET /api/lists` - Fetches available curated lists from configuration
+- `GET /api/repos?listId=<id>` - Fetches starred repositories for specified list (defaults to ai-engineer-tutorials)
 - `GET /api/readme/:owner/:repo` - Fetches README content and returns preview
 
 ### GitHub Integration
 - Uses Replit GitHub connector for authenticated requests
 - Falls back to unauthenticated mode for development
 - Supports manual `GITHUB_TOKEN` environment variable
-- Fetches from curated "beginner-friendly" starred list
+- Fetches starred repos and filters server-side against curated list configuration
 
 ## Project Structure
 
@@ -165,14 +168,19 @@ End-to-end tests verify:
 ## User Preferences
 
 The user wants:
-- Curated beginner-friendly repositories from GitHub starred list
+- Curated AI engineering tutorials from GitHub starred list
 - Focus on successful Replit launches
-- Regular updates to the repository list
-- Expandable architecture for future lists
+- Multiple list support with ability to paste custom URLs
+- Clean, engaging UI with Tinder-style interactions
 
 ## Notes
 
-- The application currently fetches from the user's starred list: `https://github.com/stars/erinmikailstaples/lists/beginner-friendly`
+- **Current Lists**: 
+  - ai-engineer-tutorials (18 curated repos including openai/codex, google/adk-python, langchain-ai/langgraph)
+  - More lists can be added by updating `shared/lists.ts` with username, listName, and curated repo array
+- **Replit Launch**: Fixed URL format to `https://replit.com/github.com/:owner/:repo` for proper GitHub repo imports
+- **Custom URLs**: Users can paste GitHub starred list URLs which are validated and matched against available lists
+- **GitHub API**: Server-side fetches all starred repos then filters by curated list configuration
 - Built to be easily expandable to support multiple lists and users
 - Emphasizes visual polish and smooth interactions
-- All core MVP features implemented and tested
+- All core MVP features implemented and tested end-to-end
