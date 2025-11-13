@@ -9,6 +9,7 @@ import { DeckHeader } from "@/components/deck-header";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_LIST_ID } from "@shared/lists";
+import { queryClient } from "@/lib/queryClient";
 
 // Local storage keys
 const SAVED_REPOS_KEY = "tutorial-tinder-saved";
@@ -72,6 +73,41 @@ export default function Deck() {
       }));
     }
   }, [readmeData, currentRepo, readmeCache]);
+
+  // Prefetch READMEs for next 2-3 repos to improve loading speed
+  useEffect(() => {
+    if (!repos.length) return;
+    
+    const prefetchCount = 3;
+    for (let i = 1; i <= prefetchCount; i++) {
+      const nextIndex = currentIndex + i;
+      if (nextIndex >= repos.length) break;
+      
+      const nextRepo = repos[nextIndex];
+      if (!nextRepo || readmeCache[nextRepo.id]) continue;
+      
+      const [owner, repo] = nextRepo.full_name.split('/');
+      const queryKey = [`/api/readme/${owner}/${repo}`];
+      
+      // Prefetch in the background
+      queryClient.prefetchQuery({
+        queryKey,
+        queryFn: async () => {
+          const res = await fetch(`/api/readme/${owner}/${repo}`);
+          if (!res.ok) throw new Error('Failed to fetch README');
+          const data = await res.json();
+          
+          // Update cache immediately
+          setReadmeCache(prev => ({
+            ...prev,
+            [nextRepo.id]: data.preview
+          }));
+          
+          return data;
+        },
+      });
+    }
+  }, [currentIndex, repos, readmeCache]);
 
   const handleSave = useCallback(() => {
     if (!currentRepo) return;
