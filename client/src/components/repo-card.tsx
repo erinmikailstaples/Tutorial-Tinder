@@ -2,7 +2,7 @@ import { Repository, ProjectSuggestion } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, ExternalLink, Heart, X, Lightbulb, Sparkles } from "lucide-react";
+import { Star, ExternalLink, Heart, X, Lightbulb, Sparkles, Rocket } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import { formatDistanceToNow } from "date-fns";
 
@@ -191,6 +191,3 @@ export function RepoCard({
     </Card>
   );
 }
-
-// Import for the Rocket icon
-import { Rocket } from "lucide-react";
