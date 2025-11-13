@@ -2,7 +2,7 @@ import { Repository, ProjectSuggestion } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, ExternalLink, Heart, X, Lightbulb, Sparkles, Rocket } from "lucide-react";
+import { Star, ExternalLink, Heart, X, Lightbulb, Sparkles, Rocket, Wand2 } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import { formatDistanceToNow } from "date-fns";
 
@@ -13,6 +13,7 @@ interface RepoCardProps {
   onSave: () => void;
   onSkip: () => void;
   onLaunch: () => void;
+  onConvertToTemplate?: () => void;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -24,6 +25,7 @@ export function RepoCard({
   onSave, 
   onSkip, 
   onLaunch,
+  onConvertToTemplate,
   style,
   className = ""
 }: RepoCardProps) {
@@ -153,6 +155,20 @@ export function RepoCard({
           <Rocket className="mr-2 h-5 w-5" />
           Launch in Replit
         </Button>
+
+        {/* Convert to Template Action */}
+        {onConvertToTemplate && (
+          <Button 
+            size="default"
+            variant="secondary"
+            className="w-full font-medium hover-elevate active-elevate-2"
+            onClick={onConvertToTemplate}
+            data-testid={`button-convert-template-${repo.id}`}
+          >
+            <Wand2 className="mr-2 h-4 w-4" />
+            Convert to Replit Template
+          </Button>
+        )}
 
         {/* Secondary Actions */}
         <div className="flex gap-3 w-full">

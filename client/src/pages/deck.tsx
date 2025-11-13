@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { Repository, ProjectSuggestion, PreflightResult } from "@shared/schema";
+import { Repository, ProjectSuggestion, PreflightResult, TemplateResponse } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { EmptyState } from "@/components/empty-state";
@@ -188,6 +188,56 @@ export default function Deck() {
     },
   });
 
+  // Mutation for template generation
+  const templateMutation = useMutation({
+    mutationFn: async (repo: Repository): Promise<TemplateResponse> => {
+      const [owner, repoName] = repo.full_name.split('/');
+      const response = await apiRequest('POST', '/api/template', {
+        owner,
+        repo: repoName,
+        defaultBranch: 'main',
+      });
+      return response.json();
+    },
+    onSuccess: (data: TemplateResponse) => {
+      toast({
+        title: "Template Created! 🎉",
+        description: `Launching ${data.templateName} in Replit...`,
+      });
+      
+      // Open the template in Replit
+      window.open(data.replitImportUrl, "_blank");
+    },
+    onError: (error: any, repo) => {
+      console.error('Template generation failed:', error);
+      
+      // Show helpful error message
+      if (error.message?.includes('not configured')) {
+        toast({
+          title: "Template Generation Not Available",
+          description: "This feature requires GitHub configuration. Launching original repo instead.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('timeout')) {
+        toast({
+          title: "Repository Too Large",
+          description: "The repository is too large to convert. Launching original repo instead.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Template Generation Failed",
+          description: "Couldn't create template. Launching original repo instead.",
+          variant: "destructive",
+        });
+      }
+      
+      // Fallback to launching original repo
+      const replitUrl = `https://replit.com/github.com/${repo.full_name}`;
+      window.open(replitUrl, "_blank");
+    },
+  });
+
   const handleSave = useCallback(() => {
     if (!currentRepo) return;
     
@@ -238,6 +288,17 @@ export default function Deck() {
     setPreflightModalOpen(false);
     setPreflightResult(null);
   }, []);
+
+  const handleConvertToTemplate = useCallback(() => {
+    if (!currentRepo) return;
+    
+    toast({
+      title: "Generating Replit Template...",
+      description: "This may take a minute. We're cloning the repo and preparing it for Replit.",
+    });
+    
+    templateMutation.mutate(currentRepo);
+  }, [currentRepo, templateMutation, toast]);
 
   const handleRestart = useCallback(() => {
     setCurrentIndex(0);
@@ -324,6 +385,7 @@ export default function Deck() {
                 onSave={handleSave}
                 onSkip={handleSkip}
                 onLaunch={handleLaunch}
+                onConvertToTemplate={handleConvertToTemplate}
                 isTop={index === 0}
                 index={index}
                 style={{

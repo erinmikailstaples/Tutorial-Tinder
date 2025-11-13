@@ -10,6 +10,7 @@ interface SwipeableCardProps {
   onSave: () => void;
   onSkip: () => void;
   onLaunch: () => void;
+  onConvertToTemplate?: () => void;
   style?: React.CSSProperties;
   isTop: boolean;
   index: number;
@@ -22,6 +23,7 @@ export function SwipeableCard({
   onSave,
   onSkip,
   onLaunch,
+  onConvertToTemplate,
   style,
   isTop,
   index,
@@ -89,6 +91,7 @@ export function SwipeableCard({
         onSave={onSave}
         onSkip={onSkip}
         onLaunch={onLaunch}
+        onConvertToTemplate={onConvertToTemplate}
       />
       
       {/* Swipe indicators */}
