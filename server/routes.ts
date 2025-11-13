@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkIfStarred } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 import { generateProjectSuggestions } from "./ai";
+import { analyzeRepository } from "./preflight";
 import type { ProjectSuggestion } from "@shared/schema";
+import { preflightRequestSchema } from "@shared/schema";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
 let redditListCache: { repositories: any[]; timestamp: number } | null = null;
@@ -284,6 +286,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         error: "Failed to unstar repository",
         message: error.message 
+      });
+    }
+  });
+
+  // Preflight check for repository Replit-readiness
+  app.post("/api/preflight", async (req, res) => {
+    try {
+      const validated = preflightRequestSchema.parse(req.body);
+      const { owner, repo } = validated;
+
+      console.log(`[Preflight] Analyzing ${owner}/${repo}...`);
+
+      const result = await analyzeRepository(owner, repo);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error(`[Preflight] Error:`, error);
+
+      // Handle validation errors
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: "Invalid request",
+          message: "Missing required fields: owner, repo, fullName",
+          details: error.errors
+        });
+      }
+
+      res.status(500).json({
+        error: "Preflight analysis failed",
+        message: error.message
       });
     }
   });
