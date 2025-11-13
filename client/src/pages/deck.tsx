@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Repository, ProjectSuggestion } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
@@ -9,7 +9,7 @@ import { DeckHeader } from "@/components/deck-header";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_LIST_ID } from "@shared/lists";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 // Local storage keys
 const SAVED_REPOS_KEY = "tutorial-tinder-saved";
@@ -128,20 +128,51 @@ export default function Deck() {
     }
   }, [currentIndex, repos, readmeCache]);
 
+  // Mutation for starring a repository on GitHub
+  const starMutation = useMutation({
+    mutationFn: async (repo: Repository) => {
+      const [owner, repoName] = repo.full_name.split('/');
+      return apiRequest('POST', `/api/star/${owner}/${repoName}`);
+    },
+    onSuccess: (data, repo) => {
+      toast({
+        title: "Starred on GitHub! ⭐",
+        description: `${repo.name} has been added to your GitHub stars.`,
+      });
+    },
+    onError: (error: any, repo) => {
+      console.error('Failed to star repository:', error);
+      
+      // Show helpful error message
+      if (error.message?.includes('Unauthorized') || error.message?.includes('connect')) {
+        toast({
+          title: "GitHub Connection Required",
+          description: "Please make sure your GitHub account is connected in Replit.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to star on GitHub",
+          description: "Saved locally, but couldn't star on GitHub. Try again later.",
+          variant: "destructive",
+        });
+      }
+    },
+  });
+
   const handleSave = useCallback(() => {
     if (!currentRepo) return;
     
+    // Save locally first
     const newSaved = [...savedRepos, currentRepo.id];
     setSavedRepos(newSaved);
     localStorage.setItem(SAVED_REPOS_KEY, JSON.stringify(newSaved));
     
-    toast({
-      title: "Saved!",
-      description: `${currentRepo.name} added to your saved list.`,
-    });
+    // Star on GitHub in the background
+    starMutation.mutate(currentRepo);
     
     setCurrentIndex(prev => prev + 1);
-  }, [currentRepo, savedRepos, toast]);
+  }, [currentRepo, savedRepos, starMutation]);
 
   const handleSkip = useCallback(() => {
     if (!currentRepo) return;

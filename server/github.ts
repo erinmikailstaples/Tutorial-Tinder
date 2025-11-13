@@ -89,3 +89,55 @@ export async function fetchReadme(owner: string, repo: string) {
     return null;
   }
 }
+
+// Check if the authenticated user has starred a repository
+export async function checkIfStarred(owner: string, repo: string): Promise<boolean> {
+  const octokit = await getUncachableGitHubClient();
+  
+  try {
+    await octokit.rest.activity.checkRepoIsStarredByAuthenticatedUser({
+      owner,
+      repo,
+    });
+    return true;
+  } catch (error: any) {
+    // 404 means not starred
+    if (error.status === 404) {
+      return false;
+    }
+    console.error(`Error checking star status for ${owner}/${repo}:`, error);
+    throw error;
+  }
+}
+
+// Star a repository for the authenticated user
+export async function starRepository(owner: string, repo: string): Promise<void> {
+  const octokit = await getUncachableGitHubClient();
+  
+  try {
+    await octokit.rest.activity.starRepoForAuthenticatedUser({
+      owner,
+      repo,
+    });
+    console.log(`Successfully starred ${owner}/${repo}`);
+  } catch (error) {
+    console.error(`Error starring ${owner}/${repo}:`, error);
+    throw error;
+  }
+}
+
+// Unstar a repository for the authenticated user
+export async function unstarRepository(owner: string, repo: string): Promise<void> {
+  const octokit = await getUncachableGitHubClient();
+  
+  try {
+    await octokit.rest.activity.unstarRepoForAuthenticatedUser({
+      owner,
+      repo,
+    });
+    console.log(`Successfully unstarred ${owner}/${repo}`);
+  } catch (error) {
+    console.error(`Error unstarring ${owner}/${repo}:`, error);
+    throw error;
+  }
+}

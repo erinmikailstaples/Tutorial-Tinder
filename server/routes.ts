@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { fetchStarredList, fetchReadme } from "./github";
+import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkIfStarred } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 import { generateProjectSuggestions } from "./ai";
 import type { ProjectSuggestion } from "@shared/schema";
@@ -220,6 +220,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error(`Error generating suggestions for ${req.params.owner}/${req.params.repo}:`, error);
       res.status(500).json({ 
         error: "Failed to generate suggestions",
+        message: error.message 
+      });
+    }
+  });
+
+  // Check if a repository is starred by the authenticated user
+  app.get("/api/star/:owner/:repo", async (req, res) => {
+    try {
+      const { owner, repo } = req.params;
+      const isStarred = await checkIfStarred(owner, repo);
+      
+      res.json({ starred: isStarred });
+    } catch (error: any) {
+      console.error(`Error checking star status for ${req.params.owner}/${req.params.repo}:`, error);
+      res.status(500).json({ 
+        error: "Failed to check star status",
+        message: error.message 
+      });
+    }
+  });
+
+  // Star a repository for the authenticated user
+  app.post("/api/star/:owner/:repo", async (req, res) => {
+    try {
+      const { owner, repo } = req.params;
+      await starRepository(owner, repo);
+      
+      res.json({ 
+        success: true,
+        message: `Successfully starred ${owner}/${repo}` 
+      });
+    } catch (error: any) {
+      console.error(`Error starring ${req.params.owner}/${req.params.repo}:`, error);
+      
+      // Provide helpful error message
+      if (error.status === 401) {
+        return res.status(401).json({ 
+          error: "Unauthorized",
+          message: "Please connect your GitHub account to star repositories" 
+        });
+      }
+      
+      res.status(500).json({ 
+        error: "Failed to star repository",
+        message: error.message 
+      });
+    }
+  });
+
+  // Unstar a repository for the authenticated user
+  app.delete("/api/star/:owner/:repo", async (req, res) => {
+    try {
+      const { owner, repo } = req.params;
+      await unstarRepository(owner, repo);
+      
+      res.json({ 
+        success: true,
+        message: `Successfully unstarred ${owner}/${repo}` 
+      });
+    } catch (error: any) {
+      console.error(`Error unstarring ${req.params.owner}/${req.params.repo}:`, error);
+      res.status(500).json({ 
+        error: "Failed to unstar repository",
         message: error.message 
       });
     }
