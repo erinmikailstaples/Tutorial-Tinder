@@ -2,10 +2,16 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { fetchStarredList, fetchReadme } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
+import { generateProjectSuggestions } from "./ai";
+import type { ProjectSuggestion } from "@shared/schema";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
 let redditListCache: { repositories: any[]; timestamp: number } | null = null;
 const REDDIT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// In-memory cache for AI suggestions to avoid repeated API calls
+const aiSuggestionsCache = new Map<string, { data: ProjectSuggestion; timestamp: number }>();
+const AI_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch all available lists
@@ -158,6 +164,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error(`Error fetching README for ${req.params.owner}/${req.params.repo}:`, error);
       res.status(500).json({ 
         error: "Failed to fetch README",
+        message: error.message 
+      });
+    }
+  });
+
+  // Generate AI project suggestions for a repository
+  app.get("/api/suggestions/:owner/:repo", async (req, res) => {
+    try {
+      const { owner, repo } = req.params;
+      const cacheKey = `${owner}/${repo}`;
+      
+      // Check cache first
+      const now = Date.now();
+      const cached = aiSuggestionsCache.get(cacheKey);
+      if (cached && (now - cached.timestamp < AI_CACHE_TTL)) {
+        console.log(`[AI] Using cached suggestions for ${cacheKey}`);
+        return res.json(cached.data);
+      }
+      
+      console.log(`[AI] Generating suggestions for ${cacheKey}`);
+      
+      // Fetch README to provide context
+      const readme = await fetchReadme(owner, repo);
+      if (!readme) {
+        return res.status(404).json({ 
+          error: "README not found",
+          message: "Cannot generate suggestions without README" 
+        });
+      }
+      
+      const content = Buffer.from(readme.content, 'base64').toString('utf-8');
+      const preview = content.slice(0, 1000).trim(); // Use more content for better AI context
+      
+      // Fetch basic repo info from GitHub
+      const { getUncachableGitHubClient } = await import('./github');
+      const octokit = await getUncachableGitHubClient();
+      const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+      
+      // Generate AI suggestions
+      const suggestions = await generateProjectSuggestions(
+        repoData.name,
+        repoData.description,
+        preview
+      );
+      
+      // Cache the result
+      aiSuggestionsCache.set(cacheKey, {
+        data: suggestions,
+        timestamp: now
+      });
+      
+      res.json(suggestions);
+    } catch (error: any) {
+      console.error(`Error generating suggestions for ${req.params.owner}/${req.params.repo}:`, error);
+      res.status(500).json({ 
+        error: "Failed to generate suggestions",
         message: error.message 
       });
     }

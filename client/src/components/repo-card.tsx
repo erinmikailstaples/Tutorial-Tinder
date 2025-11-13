@@ -1,14 +1,15 @@
-import { Repository } from "@shared/schema";
+import { Repository, ProjectSuggestion } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, ExternalLink, Heart, X } from "lucide-react";
+import { Star, ExternalLink, Heart, X, Lightbulb, Sparkles } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import { formatDistanceToNow } from "date-fns";
 
 interface RepoCardProps {
   repo: Repository;
   readmePreview?: string;
+  suggestions?: ProjectSuggestion;
   onSave: () => void;
   onSkip: () => void;
   onLaunch: () => void;
@@ -18,7 +19,8 @@ interface RepoCardProps {
 
 export function RepoCard({ 
   repo, 
-  readmePreview, 
+  readmePreview,
+  suggestions,
   onSave, 
   onSkip, 
   onLaunch,
@@ -75,7 +77,7 @@ export function RepoCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col pb-4">
+      <CardContent className="flex-1 flex flex-col pb-4 overflow-y-auto">
         {/* Description */}
         {repo.description && (
           <p className="text-base leading-relaxed mb-6 line-clamp-3">
@@ -83,11 +85,55 @@ export function RepoCard({
           </p>
         )}
 
+        {/* AI-Generated Suggestions */}
+        {suggestions && (suggestions.projectIdeas.length > 0 || suggestions.firstPrompts.length > 0) && (
+          <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-sm text-blue-900 dark:text-blue-100">AI-Powered Ideas</h3>
+            </div>
+            
+            {suggestions.projectIdeas.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-1">
+                  <Lightbulb className="h-3 w-3" />
+                  What You Could Build
+                </h4>
+                <ul className="space-y-1.5 text-xs text-blue-900/90 dark:text-blue-100/90">
+                  {suggestions.projectIdeas.slice(0, 2).map((idea, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="text-blue-600 dark:text-blue-400 shrink-0">•</span>
+                      <span className="line-clamp-2">{idea}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {suggestions.firstPrompts.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">First Prompt Ideas</h4>
+                <div className="space-y-1.5">
+                  {suggestions.firstPrompts.slice(0, 2).map((prompt, idx) => (
+                    <div 
+                      key={idx} 
+                      className="text-xs bg-white/50 dark:bg-black/20 p-2 rounded border border-blue-200/30 dark:border-blue-700/30 font-mono line-clamp-2"
+                      data-testid={`suggestion-prompt-${idx}`}
+                    >
+                      "{prompt}"
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* README Preview */}
         {readmePreview && (
           <div className="flex-1 mt-auto">
             <h3 className="font-semibold text-sm mb-2 text-muted-foreground">README Preview</h3>
-            <div className="max-h-48 overflow-y-auto bg-muted/30 p-4 rounded-lg">
+            <div className="max-h-32 overflow-y-auto bg-muted/30 p-4 rounded-lg">
               <pre className="font-mono text-xs whitespace-pre-wrap break-words">
                 {readmePreview}
               </pre>

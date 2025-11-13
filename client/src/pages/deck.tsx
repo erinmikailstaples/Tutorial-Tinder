@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { Repository } from "@shared/schema";
+import { Repository, ProjectSuggestion } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { EmptyState } from "@/components/empty-state";
@@ -22,6 +22,7 @@ export default function Deck() {
   const [savedRepos, setSavedRepos] = useState<number[]>([]);
   const [skippedRepos, setSkippedRepos] = useState<number[]>([]);
   const [readmeCache, setReadmeCache] = useState<Record<number, string>>({});
+  const [suggestionsCache, setSuggestionsCache] = useState<Record<number, ProjectSuggestion>>({});
 
   // Get listId from URL query params or use default
   const listId = useMemo(() => {
@@ -38,10 +39,11 @@ export default function Deck() {
     if (skipped) setSkippedRepos(JSON.parse(skipped));
   }, []);
 
-  // Reset current index and readme cache when listId changes to prevent showing cached data from previous list
+  // Reset current index and caches when listId changes to prevent showing cached data from previous list
   useEffect(() => {
     setCurrentIndex(0);
     setReadmeCache({});
+    setSuggestionsCache({});
   }, [listId]);
 
   // Fetch repositories for the selected list
@@ -64,6 +66,13 @@ export default function Deck() {
     enabled: !!currentRepo && !!ownerRepo && !readmeCache[currentRepo.id],
   });
 
+  // Fetch AI suggestions for current repo
+  const { data: suggestionsData } = useQuery<ProjectSuggestion>({
+    queryKey: ownerRepo ? [`/api/suggestions/${ownerRepo[0]}/${ownerRepo[1]}`] : [],
+    enabled: !!currentRepo && !!ownerRepo && !suggestionsCache[currentRepo.id],
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
   // Update cache when README data arrives
   useEffect(() => {
     if (readmeData && currentRepo && !readmeCache[currentRepo.id]) {
@@ -73,6 +82,16 @@ export default function Deck() {
       }));
     }
   }, [readmeData, currentRepo, readmeCache]);
+
+  // Update cache when AI suggestions arrive
+  useEffect(() => {
+    if (suggestionsData && currentRepo && !suggestionsCache[currentRepo.id]) {
+      setSuggestionsCache(prev => ({
+        ...prev,
+        [currentRepo.id]: suggestionsData
+      }));
+    }
+  }, [suggestionsData, currentRepo, suggestionsCache]);
 
   // Prefetch READMEs for next 2-3 repos to improve loading speed
   useEffect(() => {
@@ -224,6 +243,7 @@ export default function Deck() {
                 key={repo.id}
                 repo={repo}
                 readmePreview={readmeCache[repo.id]}
+                suggestions={suggestionsCache[repo.id]}
                 onSave={handleSave}
                 onSkip={handleSkip}
                 onLaunch={handleLaunch}

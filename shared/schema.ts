@@ -55,3 +55,11 @@ export const listConfigSchema = z.object({
 });
 
 export type ListConfig = z.infer<typeof listConfigSchema>;
+
+// AI-generated project suggestions schema
+export const projectSuggestionSchema = z.object({
+  projectIdeas: z.array(z.string()),
+  firstPrompts: z.array(z.string()),
+});
+
+export type ProjectSuggestion = z.infer<typeof projectSuggestionSchema>;

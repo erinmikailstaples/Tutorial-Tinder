@@ -1,11 +1,12 @@
 import { useSpring, animated, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { Repository } from "@shared/schema";
+import { Repository, ProjectSuggestion } from "@shared/schema";
 import { RepoCard } from "./repo-card";
 
 interface SwipeableCardProps {
   repo: Repository;
   readmePreview?: string;
+  suggestions?: ProjectSuggestion;
   onSave: () => void;
   onSkip: () => void;
   onLaunch: () => void;
@@ -17,6 +18,7 @@ interface SwipeableCardProps {
 export function SwipeableCard({
   repo,
   readmePreview,
+  suggestions,
   onSave,
   onSkip,
   onLaunch,
@@ -83,6 +85,7 @@ export function SwipeableCard({
       <RepoCard
         repo={repo}
         readmePreview={readmePreview}
+        suggestions={suggestions}
         onSave={onSave}
         onSkip={onSkip}
         onLaunch={onLaunch}
