@@ -29,7 +29,8 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
   - README preview (first 300-500 characters)
   - AI-generated project suggestions (expandable section)
 - Interactive buttons:
-  - **Launch in Replit** - Opens repo in new Replit tab
+  - **Launch in Replit** - Runs preflight check, then opens repo in new Replit tab
+  - **Convert to Replit Template** - Generates a clean, Replit-ready template from the repo
   - **View on GitHub** - Opens repo on GitHub
   - **Save** (heart icon) - Stars repo on GitHub and saves locally
   - **Skip** (X icon) - Skips to next repo
@@ -65,6 +66,25 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
   - Medium confidence (0.5-0.8): May need manual configuration
   - Low confidence (<0.5): Not recommended, suggests viewing on GitHub instead
 - Security features: origin validation, size/time limits, automatic cleanup, no code execution
+
+### Template Generation System
+- **One-Click Template Conversion**: Transforms any GitHub repo into a Replit-ready template
+- Process flow:
+  1. Clones the repository (shallow clone, depth=1)
+  2. Detects language and framework automatically
+  3. Cleans unnecessary files (.github, node_modules, tests, build artifacts)
+  4. Creates `.replit` configuration file with detected run command
+  5. Generates new README with setup instructions and attribution
+  6. Initializes new git repository
+  7. Pushes to new GitHub repository in configured organization
+  8. Launches the template in Replit automatically
+- Supported languages: Node.js, Python, others
+- Framework detection: Next.js, React, Vite, Flask, FastAPI, Django
+- Fallback handling: If template generation fails, launches original repo
+- Security: 60-second clone timeout, automatic cleanup, origin validation
+- Configuration via environment variables:
+  - `TEMPLATE_BOT_TOKEN` or `GITHUB_TOKEN`: GitHub personal access token
+  - `TEMPLATE_ORG`: Target organization for template repos (default: tutorial-tinder-templates)
 
 ## Tech Stack
 
@@ -113,6 +133,7 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 - `POST /api/star/:owner/:repo` - Stars repository on GitHub for authenticated user
 - `DELETE /api/star/:owner/:repo` - Unstars repository on GitHub for authenticated user
 - `POST /api/preflight` - Analyzes repository for Replit compatibility (clones, detects language, returns confidence score)
+- `POST /api/template` - Generates Replit-ready template from GitHub repository (clones, cleans, configures, pushes to new repo)
 
 ### GitHub Integration
 - Uses Replit GitHub connector for authenticated requests
@@ -150,13 +171,14 @@ server/
 ├── ai.ts                    # OpenAI integration for project suggestions
 ├── github.ts                # GitHub API integration (starring, README, repos)
 ├── preflight.ts             # Repository analysis and Replit compatibility detection
+├── template-generator.ts    # Template generation: clone, detect, clean, push
 ├── routes.ts                # API endpoints
 ├── storage.ts               # In-memory storage interface
 ├── index.ts                 # Express server setup
 └── vite.ts                  # Vite dev server
 
 shared/
-└── schema.ts                # TypeScript types and Zod schemas (includes PreflightResult)
+└── schema.ts                # TypeScript types and Zod schemas (PreflightResult, TemplateResponse)
 
 design_guidelines.md         # Design system documentation
 replit.md                    # This file
@@ -181,7 +203,9 @@ The workflow "Start application" runs `npm run dev` which:
 3. Hot module replacement enabled
 
 ### Environment Variables
-- `GITHUB_TOKEN` (optional) - Personal access token for GitHub API
+- `GITHUB_TOKEN` (optional) - Personal access token for GitHub API (used for starring, preflight, templates)
+- `TEMPLATE_BOT_TOKEN` (optional) - Dedicated token for template generation (falls back to GITHUB_TOKEN)
+- `TEMPLATE_ORG` (optional) - GitHub organization for generated templates (default: tutorial-tinder-templates)
 - Replit connector handles authentication automatically when deployed
 
 ### Testing
@@ -229,7 +253,9 @@ The user wants:
 - **Reddit Integration**: Reddit blocks Replit infrastructure even with proper User-Agent headers, so the Reddit list is pre-curated rather than dynamically fetched
 - **GitHub Starring**: When users click Save button, repo is starred on GitHub via API and saved to localStorage
 - **AI Integration**: OpenAI GPT-5 integration via Replit AI Integrations (no API key needed, charges billed to Replit credits)
+- **Template Generation**: Full pipeline from clone → detect → clean → configure → push → launch
 - **Caching Strategy**: README, AI suggestions, and Reddit repos all use caching (10-min for AI, clears on list switch)
+- **Security**: All GitHub operations use authenticated API, tokens never exposed to client, automatic cleanup of temp directories
 - Built to be easily expandable to support multiple lists and users
 - Emphasizes visual polish and smooth interactions
-- All core MVP features implemented with four working curated lists
+- All core MVP features implemented with four working curated lists plus template generation
