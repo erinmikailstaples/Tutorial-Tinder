@@ -96,3 +96,26 @@ export const preflightResultSchema = z.object({
 });
 
 export type PreflightResult = z.infer<typeof preflightResultSchema>;
+
+// Template generation schemas
+export const templateRequestSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  defaultBranch: z.string().optional(),
+  language: z.string().nullable().optional(),
+  framework: z.string().nullable().optional(),
+  runCommand: z.string().nullable().optional(),
+});
+
+export type TemplateRequest = z.infer<typeof templateRequestSchema>;
+
+export const templateResponseSchema = z.object({
+  templateRepoUrl: z.string(),
+  replitImportUrl: z.string(),
+  templateName: z.string(),
+  detectedLanguage: z.string(),
+  detectedFramework: z.string().nullable(),
+  runCommand: z.string(),
+});
+
+export type TemplateResponse = z.infer<typeof templateResponseSchema>;
