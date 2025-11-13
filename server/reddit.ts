@@ -43,28 +43,25 @@ export async function fetchRedditPosts(subreddit: string, limit: number = 100): 
 }
 
 export function extractGitHubRepos(posts: RedditPost[]): string[] {
-  const repoPattern = /github\.com\/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/gi;
   const repos = new Set<string>();
 
   for (const post of posts) {
-    const textToSearch = `${post.data.url} ${post.data.selftext} ${post.data.title}`;
-    const matches = Array.from(textToSearch.matchAll(repoPattern));
+    const url = post.data.url;
     
-    for (const match of matches) {
-      let repo = match[1];
-      // Clean up repo name (remove trailing slashes, anchors, etc.)
-      repo = repo.replace(/[\/\?#].*$/, '');
+    // Each post in r/coolgithubprojects has the GitHub repo as the link
+    // Match patterns like: https://github.com/owner/repo
+    const match = url.match(/github\.com\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)/);
+    
+    if (match) {
+      const owner = match[1];
+      const repo = match[2];
       
-      // Filter out common non-repo paths
-      if (!repo.includes('/') || 
-          repo.startsWith('github.com') || 
-          repo.includes('/issues') ||
-          repo.includes('/pull') ||
-          repo.includes('/wiki')) {
+      // Filter out non-repo paths (issues, wiki, etc.)
+      if (repo === 'issues' || repo === 'pull' || repo === 'wiki' || repo === 'tree' || repo === 'blob') {
         continue;
       }
       
-      repos.add(repo);
+      repos.add(`${owner}/${repo}`);
     }
   }
 

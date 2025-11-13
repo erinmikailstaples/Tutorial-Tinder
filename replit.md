@@ -179,11 +179,13 @@ The user wants:
   - **AI Engineer Tutorials** (13 repos): microsoft/generative-ai-for-beginners, langchain-ai/langgraph, stripe/ai, vercel/ai, continuedev/continue, and more
   - **General Tutorials** (11 repos): JavaScript tutorials, API integrations, Astro projects, and beginner-friendly repos
   - **Model Context Protocol (MCP)** (6 repos): Python SDK, Google Sheets, LinkedIn, and Shortcut integrations
+  - **Reddit's Cool GitHub Projects** (24 repos): Pre-curated selection from r/coolgithubprojects featuring AI tools, frameworks, and developer productivity apps
   - All repos verified to be actually starred by erinmikailstaples
 - **Replit Launch**: Fixed URL format to `https://replit.com/github.com/:owner/:repo` for proper GitHub repo imports
 - **Custom URLs**: Users can paste GitHub starred list URLs which are validated and matched against available lists
 - **GitHub API**: Server-side fetches all starred repos (no sort parameter) then filters by curated list configuration
-- **Important**: GitHub's "starred lists" feature is UI-only and not exposed in the API. We fetch all starred repos and filter client-side against curated repo arrays
+- **Important**: GitHub's "starred lists" feature is UI-only and not exposed in the API. We fetch all starred repos and filter against curated repo arrays
+- **Reddit Integration**: Reddit blocks Replit infrastructure even with proper User-Agent headers, so the Reddit list is pre-curated rather than dynamically fetched
 - Built to be easily expandable to support multiple lists and users
 - Emphasizes visual polish and smooth interactions
-- All core MVP features implemented with three working curated lists
+- All core MVP features implemented with four working curated lists

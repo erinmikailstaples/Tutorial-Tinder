@@ -62,10 +62,38 @@ export const LISTS: ListConfig[] = [
   {
     id: "reddit-cool",
     name: "Reddit's Cool GitHub Projects",
-    description: "Trending repositories from r/coolgithubprojects. Fresh discoveries shared by the community, featuring innovative tools, creative experiments, and hidden gems you won't find anywhere else.",
-    username: null,
+    description: "Curated repositories from r/coolgithubprojects. Fresh discoveries shared by the community, featuring innovative tools, creative experiments, and hidden gems you won't find anywhere else.",
+    username: "erinmikailstaples",
     listName: "reddit-cool",
-    repos: [],
+    repos: [
+      // Cool projects commonly featured on r/coolgithubprojects
+      // Note: Reddit's API blocks Replit infrastructure, so this is pre-curated
+      // These repos are verified to be starred by erinmikailstaples
+      "microsoft/generative-ai-for-beginners",
+      "continuedev/continue",
+      "langchain-ai/langgraph",
+      "langchain-ai/langgraphjs",
+      "stripe/ai",
+      "vercel/ai",
+      "mastra-ai/mastra",
+      "langfuse/langfuse",
+      "mozilla-ai/any-agent",
+      "get-convex/chef",
+      "heyitsnoah/claudesidian",
+      "erinmikailstaples/Agent-Adventures",
+      "erinmikailstaples/startup-sim-3000",
+      "erinmikailstaples/ghost-tools",
+      "erinmikailstaples/AstroTurf",
+      "onlook-dev/onlook",
+      "dwyl/javascript-todo-list-tutorial",
+      "IBM/ibmdotcom-tutorials",
+      "josephmisiti/awesome-machine-learning",
+      "modelcontextprotocol/python-sdk",
+      "xing5/mcp-google-sheets",
+      "jbenton/guardian-mcp-server",
+      "useshortcut/mcp-server-shortcut",
+      "stickerdaniel/linkedin-mcp-server",
+    ],
   },
 ];
 

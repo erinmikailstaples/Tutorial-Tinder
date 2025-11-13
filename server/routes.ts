@@ -1,8 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { fetchStarredList, fetchReadme, getUncachableGitHubClient } from "./github";
+import { fetchStarredList, fetchReadme } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
-import { fetchCoolGitHubProjects } from "./reddit";
+
+// In-memory cache for Reddit list to avoid GitHub rate limits
+let redditListCache: { repositories: any[]; timestamp: number } | null = null;
+const REDDIT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch all available lists
@@ -44,30 +47,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let repositories: any[] = [];
 
-      // Handle Reddit list specially
+      // Handle Reddit list specially - it's pre-curated and not a real GitHub starred list
       if (listId === 'reddit-cool') {
-        console.log('[API] Fetching from Reddit');
-        const repoNames = await fetchCoolGitHubProjects(100);
-        console.log(`[API] Got ${repoNames.length} repo names from Reddit`);
+        console.log('[API] Using pre-curated Reddit list (Reddit blocks Replit infrastructure)');
         
-        // Fetch repo details from GitHub for each repo
-        const octokit = await getUncachableGitHubClient();
-        const repoPromises = repoNames.slice(0, 50).map(async (fullName) => {
-          const [owner, repo] = fullName.split('/');
-          try {
-            const { data } = await octokit.rest.repos.get({ owner, repo });
-            return data;
-          } catch (error) {
-            console.warn(`[API] Failed to fetch ${fullName}:`, error);
-            return null;
-          }
-        });
-        
-        const repoResults = await Promise.all(repoPromises);
-        repositories = repoResults.filter(r => r !== null);
-        console.log(`[API] Successfully fetched ${repositories.length} repos from Reddit list`);
+        if (!list.repos || list.repos.length === 0) {
+          return res.status(500).json({ 
+            error: "Reddit list not configured",
+            message: "Pre-curated repos not found" 
+          });
+        }
+
+        // Check cache first to avoid rate limits
+        const now = Date.now();
+        if (redditListCache && (now - redditListCache.timestamp < REDDIT_CACHE_TTL)) {
+          console.log('[API] Using cached Reddit repos');
+          repositories = redditListCache.repositories;
+        } else {
+          console.log('[API] Cache miss or expired, fetching Reddit repos from GitHub');
+          
+          // Fetch repo details from GitHub for the pre-curated list
+          const { getUncachableGitHubClient } = await import('./github');
+          const octokit = await getUncachableGitHubClient();
+          
+          const repoPromises = list.repos.map(async (fullName) => {
+            const [owner, repo] = fullName.split('/');
+            try {
+              const { data } = await octokit.rest.repos.get({ owner, repo });
+              return data;
+            } catch (error) {
+              console.warn(`[API] Failed to fetch ${fullName}:`, error);
+              return null;
+            }
+          });
+          
+          const repoResults = await Promise.all(repoPromises);
+          repositories = repoResults.filter(r => r !== null);
+          
+          // Cache the results
+          redditListCache = {
+            repositories,
+            timestamp: now
+          };
+          
+          console.log(`[API] Fetched and cached ${repositories.length} repos for Reddit list`);
+        }
       } else {
-        // Handle starred lists from GitHub
+        // Handle regular lists from GitHub starred repos
         if (!list.username || !list.listName) {
           return res.status(400).json({ 
             error: "Invalid list configuration",
