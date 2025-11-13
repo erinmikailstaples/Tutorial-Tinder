@@ -4,8 +4,9 @@ import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkI
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 import { generateProjectSuggestions } from "./ai";
 import { analyzeRepository } from "./preflight";
+import { generateTemplate } from "./template-generator";
 import type { ProjectSuggestion } from "@shared/schema";
-import { preflightRequestSchema } from "@shared/schema";
+import { preflightRequestSchema, templateRequestSchema } from "@shared/schema";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
 let redditListCache: { repositories: any[]; timestamp: number } | null = null;
@@ -315,6 +316,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(500).json({
         error: "Preflight analysis failed",
+        message: error.message
+      });
+    }
+  });
+
+  // Generate Replit-ready template from existing repository
+  app.post("/api/template", async (req, res) => {
+    try {
+      const validated = templateRequestSchema.parse(req.body);
+      
+      console.log(`[Template] Generating template for ${validated.owner}/${validated.repo}...`);
+
+      const result = await generateTemplate(validated);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error(`[Template] Error:`, error);
+
+      // Handle validation errors
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: "Invalid request",
+          message: "Missing required fields: owner, repo",
+          details: error.errors
+        });
+      }
+
+      // Handle specific errors
+      if (error.message.includes('TEMPLATE_BOT_TOKEN')) {
+        return res.status(500).json({
+          error: "Template generation not configured",
+          message: "GitHub token for template generation is not configured. Please set TEMPLATE_BOT_TOKEN or GITHUB_TOKEN environment variable."
+        });
+      }
+
+      if (error.message.includes('Clone timeout')) {
+        return res.status(504).json({
+          error: "Template generation timeout",
+          message: "Repository clone took too long. The repository might be too large."
+        });
+      }
+
+      res.status(500).json({
+        error: "Template generation failed",
         message: error.message
       });
     }
