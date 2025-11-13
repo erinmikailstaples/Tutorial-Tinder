@@ -1,18 +1,45 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// GitHub Repository Schema
+export const repositorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  full_name: z.string(),
+  owner: z.object({
+    login: z.string(),
+    avatar_url: z.string(),
+  }),
+  description: z.string().nullable(),
+  html_url: z.string(),
+  stargazers_count: z.number(),
+  language: z.string().nullable(),
+  updated_at: z.string(),
+  topics: z.array(z.string()).optional(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export type Repository = z.infer<typeof repositorySchema>;
+
+// User interaction tracking
+export const userInteractionSchema = z.object({
+  repoId: z.number(),
+  action: z.enum(["saved", "skipped"]),
+  timestamp: z.string(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type UserInteraction = z.infer<typeof userInteractionSchema>;
+
+// README response schema
+export const readmeSchema = z.object({
+  content: z.string(),
+  encoding: z.string(),
+});
+
+export type Readme = z.infer<typeof readmeSchema>;
+
+// API response schemas
+export const starredListResponseSchema = z.object({
+  repositories: z.array(repositorySchema),
+  total: z.number(),
+});
+
+export type StarredListResponse = z.infer<typeof starredListResponseSchema>;
