@@ -1,0 +1,97 @@
+ have an existing Replit app that already:
+- Fetches GitHub repos and shows them in a swipe UI.
+- Can launch a repo on Replit via: https://replit.com/github/<owner>/<repo>
+- (Optionally) has a /api/preflight endpoint that returns repo metadata (owner, name, defaultBranch, language guesses, etc.).
+
+I want to add a **template conversion flow** so that, given an existing repo, the app can create a **Replit-friendly template** and launch THAT instead.
+
+Please implement the following:
+
+1. Create a new backend endpoint:
+   - Route: POST /api/template
+   - Request body (JSON):
+     {
+       "owner": string,
+       "repo": string,
+       "defaultBranch"?: string
+     }
+   - It can optionally accept extra hints like language or runCommand from the existing preflight endpoint, but it must also work if only owner/repo/defaultBranch are provided.
+
+2. In /api/template, do this:
+   - Use simple-git (or equivalent) to:
+     - Create a temporary directory.
+     - Shallow-clone the repo:
+       git clone --depth 1 --branch <defaultBranch or main> https://github.com/<owner>/<repo>.git
+   - Inspect the cloned repo to infer:
+     - language: "nodejs" | "python" | "other"
+     - framework (if obvious): "nextjs" | "react" | "vite" | "flask" | "fastapi" | "django" | null
+     - runCommand:
+       - If package.json exists:
+         - If scripts.dev: "npm install && npm run dev"
+         - Else if scripts.start: "npm install && npm start"
+         - Else: "npm install && npm run dev"
+       - Else if Python:
+         - If app.py: "pip install -r requirements.txt && python app.py"
+         - Else if main.py: "pip install -r requirements.txt && python main.py"
+         - Else: "pip install -r requirements.txt && python main.py"
+       - Else fallback: "echo 'Please see README.md for instructions'"
+   - Strip unnecessary files to make a clean template:
+     - Try to remove: .github, .git, .vscode, .idea, node_modules, dist, build, __pycache__, tests, test, docs
+     - Use recursive deletion with force; ignore errors if files/folders don’t exist.
+   - Overwrite or create a new README.md in the root that:
+     - States this is a Replit-ready starter generated from <owner>/<repo>.
+     - Documents how to run the project on Replit using the inferred runCommand.
+     - Briefly explains what the template generator did (detect language, clean files, add config).
+   - Create or overwrite a .replit file in the root with content similar to:
+
+     run = "<DETECTED_RUN_COMMAND>"
+
+     [interpreter]
+     language = "<DETECTED_LANGUAGE>"
+
+     where DETECTED_LANGUAGE is "nodejs" or "python" or "bash" as appropriate.
+
+   - Initialize a new git repo in this cleaned directory:
+     - git init
+     - git add .
+     - git commit -m "chore: generate Replit-friendly template from <owner>/<repo>"
+
+   - Use @octokit/rest and a GitHub Personal Access Token stored in an env var (e.g. TEMPLATE_BOT_TOKEN) to:
+     - Create a new public repo in a configured org or user (env var TEMPLATE_ORG), with a name like:
+       "<source-repo>-replit-template-<timestamp>"
+     - Add that new repo as remote origin.
+     - Push the local main branch to the new repo.
+
+   - Respond with JSON:
+     {
+       "templateRepoUrl": "https://github.com/<org>/<slug>",
+       "replitImportUrl": "https://replit.com/github/<org>/<slug>"
+     }
+
+3. Update the frontend:
+   - For each repo card, add a "Convert to Replit Template" or "Launch as Template" action.
+   - On that action:
+     - Call POST /api/template with the repo’s owner, name, and defaultBranch.
+     - Show a loading toast: "Generating Replit-ready template…"
+     - On success:
+       - Show success toast: "Template created! Launching in Replit…"
+       - Open the returned replitImportUrl in a new tab (window.open(url, "_blank", "noopener")).
+     - On error:
+       - Show error toast: "Template generation failed. Launching original repo instead."
+       - Fall back to launching https://replit.com/github/<owner>/<repo>.
+
+4. Keep everything in TypeScript and within the existing Next.js app/api structure. Make sure:
+   - No GitHub tokens or secrets are sent to the client.
+   - Temp directories are cleaned up after use.
+   - Errors in cloning or pushing are caught and returned as proper 4xx/5xx responses with helpful error messages.
+
+The end result should be:
+- I can pick any repo surfaced by my app,
+- Click a “Convert to Replit Template” / swipe-right,
+- And the app will:
+  - Clone it,
+  - Infer language + run command,
+  - Clean it,
+  - Add README + .replit,
+  - Push to a template repo,
+  - And launch that template on Replit.
