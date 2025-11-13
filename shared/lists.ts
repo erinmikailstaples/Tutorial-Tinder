@@ -59,6 +59,14 @@ export const LISTS: ListConfig[] = [
       "mastra-ai/mastra",
     ],
   },
+  {
+    id: "reddit-cool",
+    name: "Reddit's Cool GitHub Projects",
+    description: "Trending repositories from r/coolgithubprojects. Fresh discoveries shared by the community, featuring innovative tools, creative experiments, and hidden gems you won't find anywhere else.",
+    username: null,
+    listName: "reddit-cool",
+    repos: [],
+  },
 ];
 
 // Default list ID

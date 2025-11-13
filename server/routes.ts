@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { fetchStarredList, fetchReadme } from "./github";
+import { fetchStarredList, fetchReadme, getUncachableGitHubClient } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
+import { fetchCoolGitHubProjects } from "./reddit";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch all available lists
@@ -24,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fetch repositories from the starred list
+  // Fetch repositories from the starred list or Reddit
   app.get("/api/repos", async (req, res) => {
     try {
       const listId = (req.query.listId as string) || DEFAULT_LIST_ID;
@@ -41,22 +42,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[API] List found: ${list.name}, repos to filter: ${list.repos?.length || 0}`);
 
-      // Fetch all starred repos for the user
-      const allRepos = await fetchStarredList(list.username, list.listName);
-      console.log(`[API] Fetched ${allRepos.length} total starred repos from GitHub`);
-      
-      // Normalize repos (handle both {starred_at, repo} and direct repo formats)
-      const normalizedRepos = allRepos.map((item: any) => {
-        return 'full_name' in item ? item : item.repo;
-      });
-      
-      // Filter to only include repos in this list (if repos array is provided)
-      let repositories = normalizedRepos;
-      if (list.repos && list.repos.length > 0) {
-        const repoSet = new Set(list.repos);
-        repositories = normalizedRepos.filter((repo: any) => repoSet.has(repo.full_name));
-        console.log(`[API] Filtered to ${repositories.length} repos for list ${listId}`);
-        console.log(`[API] Repos: ${repositories.map((r: any) => r.full_name).join(', ')}`);
+      let repositories: any[] = [];
+
+      // Handle Reddit list specially
+      if (listId === 'reddit-cool') {
+        console.log('[API] Fetching from Reddit');
+        const repoNames = await fetchCoolGitHubProjects(100);
+        console.log(`[API] Got ${repoNames.length} repo names from Reddit`);
+        
+        // Fetch repo details from GitHub for each repo
+        const octokit = await getUncachableGitHubClient();
+        const repoPromises = repoNames.slice(0, 50).map(async (fullName) => {
+          const [owner, repo] = fullName.split('/');
+          try {
+            const { data } = await octokit.rest.repos.get({ owner, repo });
+            return data;
+          } catch (error) {
+            console.warn(`[API] Failed to fetch ${fullName}:`, error);
+            return null;
+          }
+        });
+        
+        const repoResults = await Promise.all(repoPromises);
+        repositories = repoResults.filter(r => r !== null);
+        console.log(`[API] Successfully fetched ${repositories.length} repos from Reddit list`);
+      } else {
+        // Handle starred lists from GitHub
+        if (!list.username || !list.listName) {
+          return res.status(400).json({ 
+            error: "Invalid list configuration",
+            message: "List must have username and listName" 
+          });
+        }
+
+        const allRepos = await fetchStarredList(list.username, list.listName);
+        console.log(`[API] Fetched ${allRepos.length} total starred repos from GitHub`);
+        
+        // Normalize repos (handle both {starred_at, repo} and direct repo formats)
+        const normalizedRepos = allRepos.map((item: any) => {
+          return 'full_name' in item ? item : item.repo;
+        });
+        
+        // Filter to only include repos in this list (if repos array is provided)
+        repositories = normalizedRepos;
+        if (list.repos && list.repos.length > 0) {
+          const repoSet = new Set(list.repos);
+          repositories = normalizedRepos.filter((repo: any) => repoSet.has(repo.full_name));
+          console.log(`[API] Filtered to ${repositories.length} repos for list ${listId}`);
+          console.log(`[API] Repos: ${repositories.map((r: any) => r.full_name).join(', ')}`);
+        }
       }
       
       res.json({

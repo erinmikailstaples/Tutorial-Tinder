@@ -49,8 +49,8 @@ export const listConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  username: z.string(),
-  listName: z.string(),
+  username: z.string().nullable(),
+  listName: z.string().nullable(),
   repos: z.array(z.string()).optional(), // Array of full_name strings like "owner/repo"
 });
 
