@@ -27,10 +27,11 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
   - Last updated timestamp
   - Description
   - README preview (first 300-500 characters)
+  - AI-generated project suggestions (expandable section)
 - Interactive buttons:
   - **Launch in Replit** - Opens repo in new Replit tab
   - **View on GitHub** - Opens repo on GitHub
-  - **Save** (heart icon) - Saves repo for later
+  - **Save** (heart icon) - Stars repo on GitHub and saves locally
   - **Skip** (X icon) - Skips to next repo
 
 ### Keyboard Shortcuts
@@ -41,8 +42,16 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 
 ### Data Persistence
 - Saved and skipped repos stored in localStorage
+- Saved repos are also starred on GitHub via GitHub API
 - Persists across page reloads
 - Can restart to clear history
+
+### AI-Powered Features
+- **Project Suggestions**: Uses OpenAI GPT-5 via Replit AI Integrations
+- Generates 2-3 project ideas based on repository README content
+- Provides example first prompts to get started
+- 10-minute caching to prevent rate limits
+- No API key required (billed to Replit credits)
 
 ## Tech Stack
 
@@ -59,6 +68,7 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 ### Backend
 - Node.js + Express
 - Octokit (GitHub REST API)
+- OpenAI API via Replit AI Integrations (GPT-5)
 - In-memory storage for session data
 
 ## Architecture
@@ -71,20 +81,28 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 5. Frontend fetches repos from `/api/repos?listId=<id>`
 6. For each repo, README preview fetched from `/api/readme/:owner/:repo`
 7. README previews cached to avoid duplicate requests
-8. User interactions (save/skip) stored in localStorage
-9. Swipe gestures trigger animations and callbacks
-10. Launch button opens `https://replit.com/github.com/:owner/:repo` in new tab
+8. AI suggestions fetched from `/api/suggestions/:owner/:repo` (cached 10 min)
+9. User interactions (save/skip) stored in localStorage
+10. **Save action** stars repo on GitHub via POST `/api/star/:owner/:repo`
+11. Swipe gestures trigger animations and callbacks
+12. Launch button opens `https://replit.com/github.com/:owner/:repo` in new tab
 
 ### API Endpoints
 - `GET /api/lists` - Fetches available curated lists from configuration
 - `GET /api/repos?listId=<id>` - Fetches starred repositories for specified list (defaults to ai-engineer-tutorials)
 - `GET /api/readme/:owner/:repo` - Fetches README content and returns preview
+- `GET /api/suggestions/:owner/:repo` - Generates AI-powered project suggestions (10-min cache)
+- `GET /api/star/:owner/:repo` - Checks if repository is starred by authenticated user
+- `POST /api/star/:owner/:repo` - Stars repository on GitHub for authenticated user
+- `DELETE /api/star/:owner/:repo` - Unstars repository on GitHub for authenticated user
 
 ### GitHub Integration
 - Uses Replit GitHub connector for authenticated requests
 - Falls back to unauthenticated mode for development
 - Supports manual `GITHUB_TOKEN` environment variable
 - Fetches starred repos and filters server-side against curated list configuration
+- **Starring**: Save button stars repositories on GitHub using authenticated API
+- Permissions: read:org, read:project, read:user, repo, user:email
 
 ## Project Structure
 
@@ -110,7 +128,8 @@ client/
     └── favicon.png
 
 server/
-├── github.ts                # GitHub API integration
+├── ai.ts                    # OpenAI integration for project suggestions
+├── github.ts                # GitHub API integration (starring, README, repos)
 ├── routes.ts                # API endpoints
 ├── storage.ts               # In-memory storage interface
 ├── index.ts                 # Express server setup
@@ -172,6 +191,8 @@ The user wants:
 - Focus on successful Replit launches
 - Multiple list support with ability to paste custom URLs
 - Clean, engaging UI with Tinder-style interactions
+- **GitHub starring integration**: Save button should star repos on GitHub, not just localStorage
+- AI-powered project suggestions to help users get started
 
 ## Notes
 
@@ -186,6 +207,9 @@ The user wants:
 - **GitHub API**: Server-side fetches all starred repos (no sort parameter) then filters by curated list configuration
 - **Important**: GitHub's "starred lists" feature is UI-only and not exposed in the API. We fetch all starred repos and filter against curated repo arrays
 - **Reddit Integration**: Reddit blocks Replit infrastructure even with proper User-Agent headers, so the Reddit list is pre-curated rather than dynamically fetched
+- **GitHub Starring**: When users click Save button, repo is starred on GitHub via API and saved to localStorage
+- **AI Integration**: OpenAI GPT-5 integration via Replit AI Integrations (no API key needed, charges billed to Replit credits)
+- **Caching Strategy**: README, AI suggestions, and Reddit repos all use caching (10-min for AI, clears on list switch)
 - Built to be easily expandable to support multiple lists and users
 - Emphasizes visual polish and smooth interactions
 - All core MVP features implemented with four working curated lists
