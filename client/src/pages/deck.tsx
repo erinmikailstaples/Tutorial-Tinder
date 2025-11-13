@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { Repository, ProjectSuggestion } from "@shared/schema";
+import { Repository, ProjectSuggestion, PreflightResult } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { EmptyState } from "@/components/empty-state";
 import { DeckHeader } from "@/components/deck-header";
+import { PreflightModal } from "@/components/preflight-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_LIST_ID } from "@shared/lists";
@@ -23,6 +24,8 @@ export default function Deck() {
   const [skippedRepos, setSkippedRepos] = useState<number[]>([]);
   const [readmeCache, setReadmeCache] = useState<Record<number, string>>({});
   const [suggestionsCache, setSuggestionsCache] = useState<Record<number, ProjectSuggestion>>({});
+  const [preflightModalOpen, setPreflightModalOpen] = useState(false);
+  const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
 
   // Get listId from URL query params or use default
   const listId = useMemo(() => {
@@ -160,6 +163,30 @@ export default function Deck() {
     },
   });
 
+  // Mutation for preflight check
+  const preflightMutation = useMutation({
+    mutationFn: async (repo: Repository) => {
+      const [owner, repoName] = repo.full_name.split('/');
+      return apiRequest('POST', '/api/preflight', {
+        owner,
+        repo: repoName,
+        fullName: repo.full_name,
+      });
+    },
+    onSuccess: (data: PreflightResult) => {
+      setPreflightResult(data);
+      setPreflightModalOpen(true);
+    },
+    onError: (error: any) => {
+      console.error('Preflight check failed:', error);
+      toast({
+        title: "Preflight Check Failed",
+        description: "Unable to analyze repository. You can still try launching it.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = useCallback(() => {
     if (!currentRepo) return;
     
@@ -187,11 +214,29 @@ export default function Deck() {
   const handleLaunch = useCallback(() => {
     if (!currentRepo) return;
     
+    // Run preflight check first
+    preflightMutation.mutate(currentRepo);
+  }, [currentRepo, preflightMutation]);
+
+  const handleConfirmLaunch = useCallback(() => {
+    if (!currentRepo) return;
+    
+    // Close modal and open Replit
+    setPreflightModalOpen(false);
+    
+    const replitUrl = `https://replit.com/github.com/${currentRepo.full_name}`;
+    window.open(replitUrl, "_blank");
+    
     toast({
       title: "Launching in Replit...",
       description: "Opening this repository in a new tab. Go build!",
     });
   }, [currentRepo, toast]);
+
+  const handleSkipPreflight = useCallback(() => {
+    setPreflightModalOpen(false);
+    setPreflightResult(null);
+  }, []);
 
   const handleRestart = useCallback(() => {
     setCurrentIndex(0);
@@ -293,6 +338,16 @@ export default function Deck() {
       </div>
 
       <KeyboardShortcuts />
+      
+      <PreflightModal
+        open={preflightModalOpen}
+        onOpenChange={setPreflightModalOpen}
+        result={preflightResult}
+        repoName={currentRepo?.full_name || ''}
+        onLaunch={handleConfirmLaunch}
+        onSkip={handleSkipPreflight}
+        isLoading={preflightMutation.isPending}
+      />
     </div>
   );
 }
