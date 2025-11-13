@@ -37,9 +37,10 @@ export default function Deck() {
     if (skipped) setSkippedRepos(JSON.parse(skipped));
   }, []);
 
-  // Reset current index when listId changes to prevent showing cached data from previous list
+  // Reset current index and readme cache when listId changes to prevent showing cached data from previous list
   useEffect(() => {
     setCurrentIndex(0);
+    setReadmeCache({});
   }, [listId]);
 
   // Fetch repositories for the selected list
