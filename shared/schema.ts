@@ -63,3 +63,36 @@ export const projectSuggestionSchema = z.object({
 });
 
 export type ProjectSuggestion = z.infer<typeof projectSuggestionSchema>;
+
+// Preflight check schemas
+export const preflightRequestSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  fullName: z.string(), // e.g., "owner/repo"
+});
+
+export type PreflightRequest = z.infer<typeof preflightRequestSchema>;
+
+export const preflightIssueSchema = z.object({
+  severity: z.enum(["error", "warning", "info"]),
+  message: z.string(),
+});
+
+export type PreflightIssue = z.infer<typeof preflightIssueSchema>;
+
+export const preflightResultSchema = z.object({
+  language: z.string().nullable(),
+  framework: z.string().nullable(),
+  runCommand: z.string().nullable(),
+  issues: z.array(preflightIssueSchema),
+  confidence: z.number().min(0).max(1),
+  detectedFiles: z.object({
+    hasPackageJson: z.boolean().optional(),
+    hasRequirementsTxt: z.boolean().optional(),
+    hasPyprojectToml: z.boolean().optional(),
+    hasDockerfile: z.boolean().optional(),
+    hasReplitFile: z.boolean().optional(),
+  }).optional(),
+});
+
+export type PreflightResult = z.infer<typeof preflightResultSchema>;

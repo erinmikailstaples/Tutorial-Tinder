@@ -1,0 +1,55 @@
+Build the following changes into the project:
+
+1. Add a new API route: POST /api/preflight
+   - Backend clones the repo to a temp directory (shallow clone).
+   - Detect language/framework:
+     - Node: detect package.json, scripts, dependencies (Next.js, React, Vite).
+     - Python: detect requirements.txt, pyproject.toml, main.py/app.py/manage.py, frameworks like Flask/FastAPI/Django.
+   - Infer run command:
+     - Node: “npm install && npm run dev” or “npm start” depending on scripts.
+     - Python: “pip install -r requirements.txt && python app.py/main.py”.
+   - Identify potential issues (missing deps file, missing entrypoint, archived repo, etc.).
+   - Return JSON:
+     {
+       language,
+       framework,
+       runCommand,
+       issues: [],
+       confidence: 0–1
+     }
+
+2. On swipe-right or “Launch”:
+   - Frontend calls /api/preflight first.
+   - Show a modal/toast summarizing:
+     - Detected language
+     - Suggested run command
+     - Confidence score
+     - Any warnings
+
+3. If confidence >= 0.8:
+   - Launch original repo to Replit as usual.
+
+4. OPTIONAL (add scaffolding for this):
+   Add a second backend endpoint POST /api/template that:
+   - Takes repo info and the preflight data.
+   - Cleans the repo: remove .github, .git, node_modules, __pycache__, .vscode, etc.
+   - Writes a new README.md (“Start Here” with instructions).
+   - Writes a .replit file:
+       run = "<DETECTED_RUN_COMMAND>"
+       [interpreter]
+       language = "<DETECTED_LANGUAGE>"
+   - Initializes a new git repo, commits, and pushes to a bot-owned GitHub org using PAT.
+   - Returns:
+       { templateRepoUrl, replitImportUrl }
+
+5. In the frontend:
+   - If confidence < 0.5, give user options:
+       - Launch anyway
+       - Skip
+       - (Later) Try template generation
+   - If using template generation, open the returned replitImportUrl instead of the original repo.
+
+6. Keep everything in the existing Next.js + TypeScript + API routes structure. Use simple-git and @octokit/rest for backend logic. Use React Query for preflight requests.
+
+Goal:
+Make sure repos launched from the app reliably run on Replit by adding preflight detection + optional auto-configuration. Keep the implementation clean and incremental—start with preflight, then layer in template generation logic.
