@@ -30,6 +30,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const listId = (req.query.listId as string) || DEFAULT_LIST_ID;
       const list = getListById(listId);
       
+      console.log(`[API] Fetching repos for listId: ${listId}`);
+      
       if (!list) {
         return res.status(400).json({ 
           error: "Invalid list ID",
@@ -37,8 +39,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log(`[API] List found: ${list.name}, repos to filter: ${list.repos?.length || 0}`);
+
       // Fetch all starred repos for the user
       const allRepos = await fetchStarredList(list.username, list.listName);
+      console.log(`[API] Fetched ${allRepos.length} total starred repos from GitHub`);
       
       // Normalize repos (handle both {starred_at, repo} and direct repo formats)
       const normalizedRepos = allRepos.map((item: any) => {
@@ -50,6 +55,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (list.repos && list.repos.length > 0) {
         const repoSet = new Set(list.repos);
         repositories = normalizedRepos.filter((repo: any) => repoSet.has(repo.full_name));
+        console.log(`[API] Filtered to ${repositories.length} repos for list ${listId}`);
+        console.log(`[API] Repos: ${repositories.map((r: any) => r.full_name).join(', ')}`);
       }
       
       res.json({

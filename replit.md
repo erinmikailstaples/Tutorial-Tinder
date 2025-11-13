@@ -175,12 +175,15 @@ The user wants:
 
 ## Notes
 
-- **Current Lists**: 
-  - ai-engineer-tutorials (18 curated repos including openai/codex, google/adk-python, langchain-ai/langgraph)
-  - More lists can be added by updating `shared/lists.ts` with username, listName, and curated repo array
+- **Current Lists** (as of November 13, 2025): 
+  - **AI Engineer Tutorials** (13 repos): microsoft/generative-ai-for-beginners, langchain-ai/langgraph, stripe/ai, vercel/ai, continuedev/continue, and more
+  - **General Tutorials** (11 repos): JavaScript tutorials, API integrations, Astro projects, and beginner-friendly repos
+  - **Model Context Protocol (MCP)** (6 repos): Python SDK, Google Sheets, LinkedIn, and Shortcut integrations
+  - All repos verified to be actually starred by erinmikailstaples
 - **Replit Launch**: Fixed URL format to `https://replit.com/github.com/:owner/:repo` for proper GitHub repo imports
 - **Custom URLs**: Users can paste GitHub starred list URLs which are validated and matched against available lists
-- **GitHub API**: Server-side fetches all starred repos then filters by curated list configuration
+- **GitHub API**: Server-side fetches all starred repos (no sort parameter) then filters by curated list configuration
+- **Important**: GitHub's "starred lists" feature is UI-only and not exposed in the API. We fetch all starred repos and filter client-side against curated repo arrays
 - Built to be easily expandable to support multiple lists and users
 - Emphasizes visual polish and smooth interactions
-- All core MVP features implemented and tested end-to-end
+- All core MVP features implemented with three working curated lists

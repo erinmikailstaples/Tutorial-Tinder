@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Repository } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
@@ -16,15 +16,17 @@ const SKIPPED_REPOS_KEY = "tutorial-tinder-skipped";
 
 export default function Deck() {
   const { toast } = useToast();
-  const [location] = useLocation();
+  const searchString = useSearch();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [savedRepos, setSavedRepos] = useState<number[]>([]);
   const [skippedRepos, setSkippedRepos] = useState<number[]>([]);
   const [readmeCache, setReadmeCache] = useState<Record<number, string>>({});
 
   // Get listId from URL query params or use default
-  const urlParams = new URLSearchParams(location.split('?')[1]);
-  const listId = urlParams.get('listId') || DEFAULT_LIST_ID;
+  const listId = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get('listId') || DEFAULT_LIST_ID;
+  }, [searchString]);
 
   // Load saved/skipped repos from localStorage on mount
   useEffect(() => {
@@ -34,6 +36,11 @@ export default function Deck() {
     if (saved) setSavedRepos(JSON.parse(saved));
     if (skipped) setSkippedRepos(JSON.parse(skipped));
   }, []);
+
+  // Reset current index when listId changes to prevent showing cached data from previous list
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [listId]);
 
   // Fetch repositories for the selected list
   const { data: reposData, isLoading, error } = useQuery<{ repositories: Repository[]; listName: string }>({

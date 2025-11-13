@@ -58,12 +58,12 @@ export async function fetchStarredList(username: string, listName: string) {
   
   try {
     // GitHub API doesn't have a direct endpoint for starred lists, 
-    // so we'll fetch all starred repos and filter by topics/description
-    // For now, we'll get the user's starred repos
+    // so we'll fetch all starred repos
+    // Remove sort parameter to get repos in the order they were starred
     const { data } = await octokit.rest.activity.listReposStarredByUser({
       username,
       per_page: 100,
-      sort: 'updated',
+      // No sort parameter - returns repos in starred order
     });
 
     return data;
