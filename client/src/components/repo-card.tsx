@@ -25,7 +25,7 @@ export function RepoCard({
   style,
   className = ""
 }: RepoCardProps) {
-  const replitUrl = `https://replit.com/github/${repo.full_name}`;
+  const replitUrl = `https://replit.com/github.com/${repo.full_name}`;
   
   const handleLaunch = () => {
     window.open(replitUrl, "_blank");

@@ -35,7 +35,7 @@ export default function Landing() {
             One click to open in Replit and start building immediately.
           </p>
 
-          <Link href="/deck">
+          <Link href="/select-list">
             <Button 
               size="lg" 
               className="px-8 py-6 text-lg font-semibold hover-elevate active-elevate-2"

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Repository } from "@shared/schema";
 import { SwipeableCard } from "@/components/swipeable-card";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { DeckHeader } from "@/components/deck-header";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DEFAULT_LIST_ID } from "@shared/lists";
 
 // Local storage keys
 const SAVED_REPOS_KEY = "tutorial-tinder-saved";
@@ -14,10 +16,15 @@ const SKIPPED_REPOS_KEY = "tutorial-tinder-skipped";
 
 export default function Deck() {
   const { toast } = useToast();
+  const [location] = useLocation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [savedRepos, setSavedRepos] = useState<number[]>([]);
   const [skippedRepos, setSkippedRepos] = useState<number[]>([]);
   const [readmeCache, setReadmeCache] = useState<Record<number, string>>({});
+
+  // Get listId from URL query params or use default
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const listId = urlParams.get('listId') || DEFAULT_LIST_ID;
 
   // Load saved/skipped repos from localStorage on mount
   useEffect(() => {
@@ -28,9 +35,14 @@ export default function Deck() {
     if (skipped) setSkippedRepos(JSON.parse(skipped));
   }, []);
 
-  // Fetch repositories
-  const { data: reposData, isLoading, error } = useQuery<{ repositories: Repository[] }>({
-    queryKey: ["/api/repos"],
+  // Fetch repositories for the selected list
+  const { data: reposData, isLoading, error } = useQuery<{ repositories: Repository[]; listName: string }>({
+    queryKey: ["/api/repos", listId],
+    queryFn: async () => {
+      const res = await fetch(`/api/repos?listId=${listId}`);
+      if (!res.ok) throw new Error('Failed to fetch repos');
+      return res.json();
+    },
   });
 
   const repos = reposData?.repositories || [];

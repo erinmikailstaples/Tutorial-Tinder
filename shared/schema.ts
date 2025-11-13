@@ -43,3 +43,15 @@ export const starredListResponseSchema = z.object({
 });
 
 export type StarredListResponse = z.infer<typeof starredListResponseSchema>;
+
+// List configuration schema
+export const listConfigSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  username: z.string(),
+  listName: z.string(),
+  repos: z.array(z.string()).optional(), // Array of full_name strings like "owner/repo"
+});
+
+export type ListConfig = z.infer<typeof listConfigSchema>;

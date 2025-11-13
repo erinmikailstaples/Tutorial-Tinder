@@ -1,17 +1,62 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { fetchStarredList, fetchReadme } from "./github";
+import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Fetch all available lists
+  app.get("/api/lists", async (req, res) => {
+    try {
+      const { LISTS } = await import("@shared/lists");
+      res.json({
+        lists: LISTS.map(list => ({
+          id: list.id,
+          name: list.name,
+          description: list.description,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching lists:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch lists",
+        message: error.message 
+      });
+    }
+  });
+
   // Fetch repositories from the starred list
   app.get("/api/repos", async (req, res) => {
     try {
-      const username = "erinmikailstaples";
-      const repositories = await fetchStarredList(username, "beginner-friendly");
+      const listId = (req.query.listId as string) || DEFAULT_LIST_ID;
+      const list = getListById(listId);
+      
+      if (!list) {
+        return res.status(400).json({ 
+          error: "Invalid list ID",
+          message: `List '${listId}' not found` 
+        });
+      }
+
+      // Fetch all starred repos for the user
+      const allRepos = await fetchStarredList(list.username, list.listName);
+      
+      // Normalize repos (handle both {starred_at, repo} and direct repo formats)
+      const normalizedRepos = allRepos.map((item: any) => {
+        return 'full_name' in item ? item : item.repo;
+      });
+      
+      // Filter to only include repos in this list (if repos array is provided)
+      let repositories = normalizedRepos;
+      if (list.repos && list.repos.length > 0) {
+        const repoSet = new Set(list.repos);
+        repositories = normalizedRepos.filter((repo: any) => repoSet.has(repo.full_name));
+      }
       
       res.json({
         repositories,
         total: repositories.length,
+        listId: list.id,
+        listName: list.name,
       });
     } catch (error: any) {
       console.error("Error fetching repositories:", error);
