@@ -1,118 +1,178 @@
 # Tutorial Tinder
 
+A Tinder-style swipeable web application that helps beginner developers discover curated GitHub repositories and launch them instantly in Replit.
+
 ## Overview
 
-Tutorial Tinder is a web application that gamifies the discovery of beginner-friendly GitHub repositories. Users swipe through curated repositories with a Tinder-like interface, saving projects they're interested in or skipping ones they're not. Each repository can be launched directly in Replit with a single click, making it easy for learners to start coding immediately without complex setup.
+Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational content discovery, making it fun and easy for developers to find beginner-friendly projects to learn from and build.
 
-The application fetches repositories from a curated GitHub starred list, displays them in an interactive card deck with swipe gestures, and provides repository metadata including descriptions, star counts, languages, and README previews.
+## Features
+
+### Landing Page
+- Hero section with gradient background and decorative code elements
+- Clear value proposition and call-to-action
+- Three feature cards highlighting key benefits:
+  - Curated Tutorials
+  - Instant Setup
+  - Learn by Doing
+
+### Card Deck Interface
+- Tinder-style swipeable cards displaying GitHub repositories
+- Card stack with depth perception (layering, scaling, blur effects)
+- Smooth swipe gestures with visual feedback
+- Each card shows:
+  - Repository name and owner
+  - Programming language badge
+  - Star count
+  - Last updated timestamp
+  - Description
+  - README preview (first 300-500 characters)
+- Interactive buttons:
+  - **Launch in Replit** - Opens repo in new Replit tab
+  - **View on GitHub** - Opens repo on GitHub
+  - **Save** (heart icon) - Saves repo for later
+  - **Skip** (X icon) - Skips to next repo
+
+### Keyboard Shortcuts
+- ← (Left Arrow) - Skip current repo
+- → (Right Arrow) - Save current repo
+- ↵ (Enter) - Launch current repo in Replit
+- Visible indicator at bottom of screen
+
+### Data Persistence
+- Saved and skipped repos stored in localStorage
+- Persists across page reloads
+- Can restart to clear history
+
+## Tech Stack
+
+### Frontend
+- React with TypeScript
+- Wouter for routing
+- TanStack Query for data fetching and caching
+- Tailwind CSS for styling
+- shadcn/ui components (Card, Button, Badge, Toast)
+- react-spring for animations
+- @use-gesture/react for swipe gestures
+- Inter font for UI, JetBrains Mono for code
+
+### Backend
+- Node.js + Express
+- Octokit (GitHub REST API)
+- In-memory storage for session data
+
+## Architecture
+
+### Data Flow
+1. User lands on `/` - sees hero and features
+2. Clicks "Start Swiping" → navigates to `/deck`
+3. Frontend fetches repos from `/api/repos`
+4. For each repo, README preview fetched from `/api/readme/:owner/:repo`
+5. README previews cached to avoid duplicate requests
+6. User interactions (save/skip) stored in localStorage
+7. Swipe gestures trigger animations and callbacks
+8. Launch button opens `https://replit.com/github/:owner/:repo` in new tab
+
+### API Endpoints
+- `GET /api/repos` - Fetches starred repositories from GitHub user "erinmikailstaples"
+- `GET /api/readme/:owner/:repo` - Fetches README content and returns preview
+
+### GitHub Integration
+- Uses Replit GitHub connector for authenticated requests
+- Falls back to unauthenticated mode for development
+- Supports manual `GITHUB_TOKEN` environment variable
+- Fetches from curated "beginner-friendly" starred list
+
+## Project Structure
+
+```
+client/
+├── src/
+│   ├── components/
+│   │   ├── ui/              # shadcn components
+│   │   ├── deck-header.tsx  # Top navigation with counter
+│   │   ├── repo-card.tsx    # Individual repo card
+│   │   ├── swipeable-card.tsx # Swipe gesture wrapper
+│   │   ├── keyboard-shortcuts.tsx # Keyboard hints
+│   │   └── empty-state.tsx  # No more repos state
+│   ├── pages/
+│   │   ├── landing.tsx      # Hero and features
+│   │   ├── deck.tsx         # Card stack interface
+│   │   └── not-found.tsx    # 404 page
+│   ├── App.tsx              # Main app with routing
+│   ├── index.css            # Global styles and design tokens
+│   └── main.tsx             # Entry point
+├── index.html               # HTML template with SEO meta tags
+└── public/
+    └── favicon.png
+
+server/
+├── github.ts                # GitHub API integration
+├── routes.ts                # API endpoints
+├── storage.ts               # In-memory storage interface
+├── index.ts                 # Express server setup
+└── vite.ts                  # Vite dev server
+
+shared/
+└── schema.ts                # TypeScript types and Zod schemas
+
+design_guidelines.md         # Design system documentation
+replit.md                    # This file
+```
+
+## Design System
+
+Following the design guidelines in `design_guidelines.md`:
+- **Typography**: Inter for UI, JetBrains Mono for code
+- **Colors**: Neutral grays with blue primary accent
+- **Spacing**: Consistent 4px-based scale
+- **Components**: shadcn/ui with custom elevation interactions
+- **Animations**: Smooth swipe physics, subtle card transitions
+- **Responsive**: Mobile-first, touch-optimized
+
+## Development
+
+### Running Locally
+The workflow "Start application" runs `npm run dev` which:
+1. Starts Express server on port 5000
+2. Starts Vite dev server (proxied through Express)
+3. Hot module replacement enabled
+
+### Environment Variables
+- `GITHUB_TOKEN` (optional) - Personal access token for GitHub API
+- Replit connector handles authentication automatically when deployed
+
+### Testing
+End-to-end tests verify:
+- Landing page rendering and navigation
+- Deck page loading and card display
+- Swipe gestures and button interactions
+- Launch in Replit functionality
+- localStorage persistence
+- Header counter updates
+
+## Future Enhancements
+
+### Next Phase Ideas
+- User accounts with persistent save history across devices
+- Multiple list support (intermediate, advanced tutorials)
+- Advanced filtering by language, topic, difficulty
+- Analytics dashboard showing launch success rates
+- Community features: users can create and share lists
+- Social sharing of favorite repos
+- Tutorial recommendations based on saved repos
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+The user wants:
+- Curated beginner-friendly repositories from GitHub starred list
+- Focus on successful Replit launches
+- Regular updates to the repository list
+- Expandable architecture for future lists
 
-## System Architecture
+## Notes
 
-### Frontend Architecture
-
-**Technology Stack:**
-- React with TypeScript for type safety and component structure
-- Vite as the build tool and development server for fast HMR and optimized builds
-- Wouter for lightweight client-side routing
-- TanStack Query (React Query) for server state management and caching
-- Tailwind CSS for utility-first styling with a custom design system
-
-**UI Component Library:**
-- Radix UI primitives for accessible, unstyled components
-- shadcn/ui design system (New York variant) providing pre-styled components
-- Custom components built on top of Radix for cards, buttons, badges, toasts, etc.
-
-**Interaction Design:**
-- React Spring for physics-based animations and smooth transitions
-- @use-gesture/react for touch and drag gesture handling
-- Custom swipeable card component that responds to drag velocity and direction
-- Keyboard shortcuts for power users (arrow keys for skip/save, enter for launch)
-
-**State Management Strategy:**
-- Server state managed through React Query with infinite staleTime for static repo data
-- Client state (saved/skipped repos) persisted in localStorage
-- No global state management library needed due to simple data flow
-
-**Design System:**
-- CSS custom properties (HSL-based) for theming with light/dark mode support
-- Consistent spacing scale using Tailwind units (2, 4, 8, 12, 16, 20, 24, 32)
-- Typography hierarchy using DM Sans/Inter for body text and JetBrains Mono/Fira Code for code
-- Elevation system using subtle box shadows and opacity-based borders
-
-### Backend Architecture
-
-**Server Framework:**
-- Express.js running on Node.js with TypeScript
-- ESM module system for modern JavaScript features
-- Middleware for JSON parsing, request logging, and performance monitoring
-
-**API Design:**
-- RESTful endpoints for repository data and README content
-- `/api/repos` - Fetches starred repositories filtered by "beginner-friendly" topic
-- `/api/readme/:owner/:repo` - Returns README preview (first 500 chars) and full content
-- Stateless design with no session management required
-
-**GitHub Integration Strategy:**
-- Octokit REST client for GitHub API communication
-- Dynamic token management supporting both Replit connectors and manual tokens
-- Unauthenticated fallback for development without affecting core functionality
-- Token refresh handled automatically through Replit connector API
-
-**Error Handling:**
-- Try-catch blocks with detailed error logging
-- Graceful degradation when GitHub API is unavailable
-- HTTP status codes (404, 500) with descriptive error messages
-
-### Data Storage Solutions
-
-**Current Implementation:**
-- In-memory storage for user interactions (MemStorage class implementing IStorage interface)
-- localStorage for persisting saved and skipped repository IDs on the client
-- No database currently required due to read-only GitHub data
-
-**Storage Interface Design:**
-- Abstract IStorage interface allows easy migration to persistent database
-- Prepared for future PostgreSQL integration via Drizzle ORM
-- Schema definitions already present in shared/schema.ts using Zod for validation
-
-**Data Models:**
-- Repository schema with owner, metadata, stars, language, topics
-- UserInteraction schema tracking save/skip actions with timestamps
-- Readme schema for content and encoding information
-- Type-safe schemas shared between client and server
-
-### External Dependencies
-
-**GitHub API:**
-- Primary data source for repository information
-- Fetches starred repositories from user "erinmikailstaples" with topic filtering
-- README content retrieval with base64 decoding
-- Rate limiting considerations (5000 requests/hour authenticated, 60 unauthenticated)
-
-**Replit Integration:**
-- Replit connectors for GitHub OAuth token management
-- Environment variables for Replit identity and renewal tokens
-- One-click repository launch via `replit.com/github/:owner/:repo` URLs
-- Development plugins (cartographer, dev banner, runtime error overlay) for Replit environment
-
-**Third-Party Libraries:**
-- date-fns for timestamp formatting ("2 hours ago" style)
-- nanoid for unique ID generation
-- Zod for runtime schema validation
-- react-icons for icon library (GitHub icon via simple-icons)
-
-**Build and Development Tools:**
-- TypeScript compiler for type checking (noEmit mode)
-- esbuild for production server bundle
-- PostCSS with Tailwind and Autoprefixer for CSS processing
-- Drizzle Kit for future database migrations (currently unused)
-
-**Authentication Flow:**
-- Optional GitHub authentication through Replit connectors
-- Falls back to unauthenticated requests if tokens unavailable
-- No user authentication required - app is read-only for discovery
-- Future consideration: User accounts to sync saved repos across devices
+- The application currently fetches from the user's starred list: `https://github.com/stars/erinmikailstaples/lists/beginner-friendly`
+- Built to be easily expandable to support multiple lists and users
+- Emphasizes visual polish and smooth interactions
+- All core MVP features implemented and tested
