@@ -26,11 +26,12 @@ export async function fetchRedditPosts(subreddit: string, limit: number = 100): 
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'TutorialTinder/1.0 (Replit Educational Project)',
+        'User-Agent': 'web:tutorial-tinder:v1.0.0 (by /u/erinmikailstaples)',
       },
     });
 
     if (!response.ok) {
+      console.error(`Reddit API error: ${response.status} ${response.statusText}`);
       throw new Error(`Reddit API returned ${response.status}`);
     }
 
