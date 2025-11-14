@@ -372,6 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const githubToken = await getAccessToken();
       
       if (!githubToken) {
+        console.log('[Template] No GitHub token available');
         return res.status(401).json({
           error: "GitHub authentication required",
           message: "Please connect your GitHub account to generate templates",
@@ -379,12 +380,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`[Template] Generating template for ${owner}/${repo}...`);
+      console.log(`[Template] Starting template generation for ${owner}/${repo}...`);
+      console.log(`[Template] User has GitHub token: ${githubToken ? 'yes' : 'no'}`);
 
       // Optional: Allow targeting a specific org via env var (for advanced users)
       const targetOrg = process.env.TEMPLATE_ORG;
-      const result = await generateTemplate(validation.data, githubToken, targetOrg);
+      
+      // Add timeout for entire template generation process (3 minutes)
+      const templatePromise = generateTemplate(validation.data, githubToken, targetOrg);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Template generation timeout: operation took longer than 3 minutes')), 180000)
+      );
+      
+      const result = await Promise.race([templatePromise, timeoutPromise]) as TemplateResponse;
 
+      console.log(`[Template] Successfully created template: ${result.templateRepoUrl}`);
+      
       // Return properly typed TemplateResponse
       res.json(result);
     } catch (error: any) {

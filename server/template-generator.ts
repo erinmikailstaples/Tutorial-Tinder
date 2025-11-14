@@ -8,7 +8,7 @@ import { TemplateRequest, TemplateResponse } from '@shared/schema';
 // Ensure temp directories are cleaned up on exit
 tmp.setGracefulCleanup();
 
-const MAX_CLONE_TIMEOUT_MS = 60000; // 60 seconds
+const MAX_CLONE_TIMEOUT_MS = 120000; // 120 seconds (increased for larger repos)
 
 interface DetectionResult {
   language: 'nodejs' | 'python' | 'other';
@@ -263,7 +263,7 @@ export async function generateTemplate(
   let cleanupNeeded = true;
   
   try {
-    console.log(`[Template] Cloning ${owner}/${repo}...`);
+    console.log(`[Template] Step 1/6: Cloning ${owner}/${repo}...`);
     
     // Clone repository with timeout
     const git = simpleGit();
@@ -272,7 +272,7 @@ export async function generateTemplate(
     await Promise.race([
       git.clone(cloneUrl, repoPath, ['--depth', '1', '--branch', defaultBranch, '--single-branch']),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Repository clone timeout (60 seconds)')), MAX_CLONE_TIMEOUT_MS)
+        setTimeout(() => reject(new Error('Repository clone timeout (120 seconds)')), MAX_CLONE_TIMEOUT_MS)
       ),
     ]);
     
@@ -282,19 +282,20 @@ export async function generateTemplate(
       throw new Error('Clone verification failed: directory is empty');
     }
     
-    console.log('[Template] Clone complete, detecting project details...');
+    console.log(`[Template] Clone complete (${files.length} files), detecting project details...`);
     
     // Detect language, framework, and run command
+    console.log('[Template] Step 2/6: Detecting language and framework...');
     const { language, framework, runCommand } = await detectProjectDetails(repoPath, request);
     
     console.log(`[Template] Detected: ${language}, ${framework || 'no framework'}`);
     
     // Clean template (remove build artifacts and environment-specific files)
-    console.log('[Template] Cleaning unnecessary files...');
+    console.log('[Template] Step 3/6: Cleaning unnecessary files...');
     await cleanTemplate(repoPath);
     
     // Create .replit config (only if doesn't exist)
-    console.log('[Template] Creating .replit configuration...');
+    console.log('[Template] Step 4/6: Creating .replit configuration...');
     await createReplitConfig(repoPath, language, runCommand);
     
     // Create new README
@@ -302,7 +303,7 @@ export async function generateTemplate(
     await createTemplateReadme(repoPath, owner, repo, language, framework, runCommand);
     
     // Initialize new git repo with user config
-    console.log('[Template] Initializing new git repository...');
+    console.log('[Template] Step 5/6: Initializing new git repository...');
     const repoGit = simpleGit(repoPath);
     await repoGit.init();
     await repoGit.addConfig('user.name', 'Tutorial Tinder Bot');
@@ -311,7 +312,7 @@ export async function generateTemplate(
     await repoGit.commit(`chore: generate Replit-friendly template from ${owner}/${repo}`);
     
     // Create GitHub repo and push
-    console.log('[Template] Creating GitHub repository...');
+    console.log('[Template] Step 6/6: Creating GitHub repository and pushing...');
     const octokit = new Octokit({ auth: githubToken });
     
     const timestamp = Date.now();
