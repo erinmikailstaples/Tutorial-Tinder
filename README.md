@@ -622,15 +622,6 @@ This project is open source and available under the MIT License.
 
 ---
 
-## 🙏 Acknowledgments
-
-- **Replit** - For the amazing platform and integrations
-- **GitHub** - For hosting all these amazing tutorials
-- **OpenAI** - For powering the AI suggestions
-- **The open-source community** - For creating all these wonderful learning resources
-
----
-
 ## 📧 Contact & Support
 
 - **Issues**: Found a bug? [Open an issue](https://github.com/your-username/tutorial-tinder/issues)
@@ -648,7 +639,7 @@ This project is open source and available under the MIT License.
 
 <div align="center">
 
-**Made with ❤️ by developers, for developers**
+**Made with ❤️ and curiosity by Erin Mikail Staples using Replit**
 
 ⭐ Star this repo if you find it helpful!
 
