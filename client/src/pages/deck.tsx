@@ -144,6 +144,7 @@ export default function Deck() {
       toast({
         title: "Starred on GitHub! ⭐",
         description: `${repo.name} has been added to your GitHub stars.`,
+        duration: 4000,
       });
     },
     onError: (error: any, repo) => {
@@ -155,12 +156,14 @@ export default function Deck() {
           title: "GitHub Connection Required",
           description: "Please make sure your GitHub account is connected in Replit.",
           variant: "destructive",
+          duration: 6000,
         });
       } else {
         toast({
           title: "Failed to star on GitHub",
           description: "Saved locally, but couldn't star on GitHub. Try again later.",
           variant: "destructive",
+          duration: 5000,
         });
       }
     },
@@ -187,6 +190,7 @@ export default function Deck() {
         title: "Preflight Check Failed",
         description: "Unable to analyze repository. You can still try launching it.",
         variant: "destructive",
+        duration: 5000,
       });
     },
   });
@@ -207,10 +211,33 @@ export default function Deck() {
       
       toast({
         title: "Template Created! 🎉",
-        description: `Launching ${data.templateName} in Replit...`,
+        description: (
+          <div className="space-y-2">
+            <p>Your template "{data.templateName}" has been created successfully!</p>
+            <div className="flex flex-col gap-2 text-xs">
+              <a 
+                href={data.templateRepoUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium flex items-center gap-1"
+              >
+                View on GitHub →
+              </a>
+              <a 
+                href={data.replitImportUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium flex items-center gap-1"
+              >
+                Open in Replit →
+              </a>
+            </div>
+          </div>
+        ),
+        duration: 8000,
       });
       
-      // Open the template in Replit
+      // Auto-open the template in Replit
       window.open(data.replitImportUrl, "_blank");
     },
     onError: (error: any, repo) => {
@@ -239,6 +266,7 @@ export default function Deck() {
         title: errorTitle,
         description: errorDescription,
         variant: "destructive",
+        duration: 6000,
       });
       
       // Fallback: launch original repo after a short delay to ensure toast is shown
@@ -292,6 +320,7 @@ export default function Deck() {
     toast({
       title: "Launching in Replit...",
       description: "Opening this repository in a new tab. Go build!",
+      duration: 3000,
     });
   }, [currentRepo, toast]);
 
