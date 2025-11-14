@@ -14,6 +14,7 @@ interface RepoCardProps {
   onSkip: () => void;
   onLaunch: () => void;
   onConvertToTemplate?: () => void;
+  isProcessing?: boolean;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -26,6 +27,7 @@ export function RepoCard({
   onSkip, 
   onLaunch,
   onConvertToTemplate,
+  isProcessing = false,
   style,
   className = ""
 }: RepoCardProps) {
@@ -150,6 +152,7 @@ export function RepoCard({
           size="lg"
           className="w-full font-semibold hover-elevate active-elevate-2"
           onClick={handleLaunch}
+          disabled={isProcessing}
           data-testid={`button-launch-${repo.id}`}
         >
           <Rocket className="mr-2 h-5 w-5" />
@@ -163,10 +166,11 @@ export function RepoCard({
             variant="secondary"
             className="w-full font-medium hover-elevate active-elevate-2"
             onClick={onConvertToTemplate}
+            disabled={isProcessing}
             data-testid={`button-convert-template-${repo.id}`}
           >
             <Wand2 className="mr-2 h-4 w-4" />
-            Convert to Replit Template
+            {isProcessing ? 'Generating Template...' : 'Convert to Replit Template'}
           </Button>
         )}
 
@@ -177,6 +181,7 @@ export function RepoCard({
             size="default"
             className="flex-1 hover-elevate active-elevate-2"
             onClick={handleGitHub}
+            disabled={isProcessing}
             data-testid={`button-github-${repo.id}`}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
@@ -188,6 +193,7 @@ export function RepoCard({
             size="icon"
             className="hover-elevate active-elevate-2 bg-green-500/10 hover:bg-green-500/20 border-green-500/20"
             onClick={onSave}
+            disabled={isProcessing}
             data-testid={`button-save-${repo.id}`}
           >
             <Heart className="h-5 w-5 text-green-600" />
@@ -198,6 +204,7 @@ export function RepoCard({
             size="icon"
             className="hover-elevate active-elevate-2 bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
             onClick={onSkip}
+            disabled={isProcessing}
             data-testid={`button-skip-${repo.id}`}
           >
             <X className="h-5 w-5 text-red-600" />

@@ -323,44 +323,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Generate Replit-ready template from existing repository
   app.post("/api/template", async (req, res) => {
+    // Validate request body with zod safeParse
+    const validation = templateRequestSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Invalid request",
+        message: "Missing required fields: owner, repo",
+        details: validation.error.errors
+      });
+    }
+    
+    const { owner, repo, defaultBranch } = validation.data;
+    
     try {
-      const validated = templateRequestSchema.parse(req.body);
-      
-      console.log(`[Template] Generating template for ${validated.owner}/${validated.repo}...`);
+      console.log(`[Template] Generating template for ${owner}/${repo}...`);
 
-      const result = await generateTemplate(validated);
+      const result = await generateTemplate(validation.data);
 
+      // Return properly typed TemplateResponse
       res.json(result);
     } catch (error: any) {
       console.error(`[Template] Error:`, error);
 
-      // Handle validation errors
-      if (error.name === 'ZodError') {
-        return res.status(400).json({
-          error: "Invalid request",
-          message: "Missing required fields: owner, repo",
-          details: error.errors
+      // Extract detailed error message from Octokit if available
+      const detailedMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
+
+      // Handle errors based on status code first (for Octokit errors), then message content
+      if (error.status) {
+        // Octokit error with HTTP status
+        return res.status(error.status).json({
+          error: error.status === 422 ? "GitHub repository creation failed" :
+                 error.status === 404 ? "Repository not found" :
+                 error.status === 401 ? "GitHub authentication failed" :
+                 error.status === 403 ? "GitHub permission denied" :
+                 "GitHub API error",
+          message: detailedMessage
         });
       }
 
-      // Handle specific errors
-      if (error.message.includes('TEMPLATE_BOT_TOKEN')) {
-        return res.status(500).json({
+      // Handle specific error cases by message content
+      if (error.message?.includes('not configured')) {
+        return res.status(503).json({
           error: "Template generation not configured",
-          message: "GitHub token for template generation is not configured. Please set TEMPLATE_BOT_TOKEN or GITHUB_TOKEN environment variable."
+          message: detailedMessage
         });
       }
 
-      if (error.message.includes('Clone timeout')) {
+      if (error.message?.includes('timeout')) {
         return res.status(504).json({
           error: "Template generation timeout",
-          message: "Repository clone took too long. The repository might be too large."
+          message: detailedMessage
         });
       }
 
+      if (error.message?.includes('not found')) {
+        return res.status(404).json({
+          error: "Repository not found",
+          message: detailedMessage
+        });
+      }
+
+      if (error.message?.includes('authentication failed')) {
+        return res.status(401).json({
+          error: "GitHub authentication failed",
+          message: detailedMessage
+        });
+      }
+
+      // Generic error fallback
       res.status(500).json({
         error: "Template generation failed",
-        message: error.message
+        message: detailedMessage
       });
     }
   });

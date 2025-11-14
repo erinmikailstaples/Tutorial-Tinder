@@ -12,6 +12,18 @@ const MAX_CLONE_TIMEOUT_MS = 60000; // 60 seconds
 const TEMPLATE_BOT_TOKEN = process.env.TEMPLATE_BOT_TOKEN || process.env.GITHUB_TOKEN;
 const TEMPLATE_ORG = process.env.TEMPLATE_ORG || 'tutorial-tinder-templates';
 
+/**
+ * Validates that required environment variables are set
+ */
+function validateEnvironment(): void {
+  if (!TEMPLATE_BOT_TOKEN) {
+    throw new Error('Template generation not configured: TEMPLATE_BOT_TOKEN or GITHUB_TOKEN environment variable is required');
+  }
+  if (!TEMPLATE_ORG) {
+    throw new Error('Template generation not configured: TEMPLATE_ORG environment variable is required');
+  }
+}
+
 interface DetectionResult {
   language: 'nodejs' | 'python' | 'other';
   framework: string | null;
@@ -117,24 +129,26 @@ async function detectProjectDetails(repoPath: string, hints?: Partial<TemplateRe
 
 /**
  * Removes unnecessary files/folders from template
+ * More conservative: only removes build artifacts and environment-specific files
  */
 async function cleanTemplate(repoPath: string): Promise<void> {
   const foldersToRemove = [
-    '.github',
-    '.git',
-    '.vscode',
-    '.idea',
-    'node_modules',
-    'dist',
-    'build',
-    '__pycache__',
-    'tests',
-    'test',
-    'docs',
-    '.next',
-    'venv',
-    'env',
+    '.github',      // CI/CD workflows not needed for templates
+    '.git',         // Will reinitialize
+    '.vscode',      // Editor config
+    '.idea',        // Editor config
+    'node_modules', // Dependencies will be reinstalled
+    'dist',         // Build output
+    'build',        // Build output
+    '__pycache__',  // Python cache
+    '.next',        // Next.js build
+    'venv',         // Python virtual env
+    'env',          // Python virtual env
+    '.pytest_cache', // Test cache
+    '.mypy_cache',  // Type check cache
   ];
+  
+  // Keep tests and docs - they may be valuable for learning
   
   for (const folder of foldersToRemove) {
     const folderPath = path.join(repoPath, folder);
@@ -147,21 +161,32 @@ async function cleanTemplate(repoPath: string): Promise<void> {
 }
 
 /**
- * Creates .replit configuration file
+ * Creates .replit configuration file (only if one doesn't exist)
  */
 async function createReplitConfig(repoPath: string, language: string, runCommand: string): Promise<void> {
-  const replitLang = language === 'nodejs' ? 'nodejs' : language === 'python' ? 'python3' : 'bash';
+  const replitPath = path.join(repoPath, '.replit');
+  
+  // Check if .replit already exists
+  try {
+    await fs.access(replitPath);
+    console.log('[Template] .replit file already exists, skipping creation');
+    return;
+  } catch {
+    // File doesn't exist, proceed with creation
+  }
+  
+  const replitLang = language === 'nodejs' ? 'nodejs-20' : language === 'python' ? 'python3-11' : 'bash';
   
   const replitConfig = `run = "${runCommand}"
 
-[interpreter]
-language = "${replitLang}"
-
 [nix]
-channel = "stable-23_11"
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "${runCommand}"]
 `;
   
-  await fs.writeFile(path.join(repoPath, '.replit'), replitConfig, 'utf-8');
+  await fs.writeFile(replitPath, replitConfig, 'utf-8');
 }
 
 /**
@@ -231,29 +256,40 @@ To suggest improvements to this template or the template generator, visit:
  * Main template generation function
  */
 export async function generateTemplate(request: TemplateRequest): Promise<TemplateResponse> {
-  if (!TEMPLATE_BOT_TOKEN) {
-    throw new Error('TEMPLATE_BOT_TOKEN or GITHUB_TOKEN environment variable is required for template generation');
-  }
+  // Validate environment
+  validateEnvironment();
   
   const { owner, repo, defaultBranch = 'main' } = request;
+  
+  // Validate GitHub origin
+  if (!owner || !repo) {
+    throw new Error('Invalid repository: owner and repo are required');
+  }
   
   // Create temporary directory
   const tmpDir = tmp.dirSync({ unsafeCleanup: true });
   const repoPath = tmpDir.name;
+  let cleanupNeeded = true;
   
   try {
     console.log(`[Template] Cloning ${owner}/${repo}...`);
     
-    // Clone repository
+    // Clone repository with timeout
     const git = simpleGit();
     const cloneUrl = `https://github.com/${owner}/${repo}.git`;
     
     await Promise.race([
-      git.clone(cloneUrl, repoPath, ['--depth', '1', '--branch', defaultBranch]),
+      git.clone(cloneUrl, repoPath, ['--depth', '1', '--branch', defaultBranch, '--single-branch']),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Clone timeout')), MAX_CLONE_TIMEOUT_MS)
+        setTimeout(() => reject(new Error('Repository clone timeout (60 seconds)')), MAX_CLONE_TIMEOUT_MS)
       ),
     ]);
+    
+    // Verify clone succeeded by checking for files
+    const files = await fs.readdir(repoPath);
+    if (files.length === 0) {
+      throw new Error('Clone verification failed: directory is empty');
+    }
     
     console.log('[Template] Clone complete, detecting project details...');
     
@@ -262,11 +298,11 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     
     console.log(`[Template] Detected: ${language}, ${framework || 'no framework'}`);
     
-    // Clean template
+    // Clean template (remove build artifacts and environment-specific files)
     console.log('[Template] Cleaning unnecessary files...');
     await cleanTemplate(repoPath);
     
-    // Create .replit config
+    // Create .replit config (only if doesn't exist)
     console.log('[Template] Creating .replit configuration...');
     await createReplitConfig(repoPath, language, runCommand);
     
@@ -274,10 +310,12 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     console.log('[Template] Creating template README...');
     await createTemplateReadme(repoPath, owner, repo, language, framework, runCommand);
     
-    // Initialize new git repo
+    // Initialize new git repo with user config
     console.log('[Template] Initializing new git repository...');
     const repoGit = simpleGit(repoPath);
     await repoGit.init();
+    await repoGit.addConfig('user.name', 'Tutorial Tinder Bot');
+    await repoGit.addConfig('user.email', 'bot@tutorial-tinder.app');
     await repoGit.add('.');
     await repoGit.commit(`chore: generate Replit-friendly template from ${owner}/${repo}`);
     
@@ -288,32 +326,48 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     const timestamp = Date.now();
     const templateName = `${repo}-replit-template-${timestamp}`;
     
-    const { data: newRepo } = await octokit.repos.createInOrg({
-      org: TEMPLATE_ORG,
-      name: templateName,
-      description: `Replit-ready template generated from ${owner}/${repo}`,
-      public: true,
-      auto_init: false,
-    }).catch(async () => {
-      // Fallback to user repo if org creation fails
-      return octokit.repos.createForAuthenticatedUser({
+    let newRepo;
+    try {
+      const { data } = await octokit.repos.createInOrg({
+        org: TEMPLATE_ORG,
         name: templateName,
         description: `Replit-ready template generated from ${owner}/${repo}`,
         public: true,
         auto_init: false,
       });
-    });
+      newRepo = data;
+    } catch (orgError: any) {
+      // Fallback to user repo if org creation fails
+      console.log(`[Template] Org creation failed (${orgError.message}), falling back to user repo`);
+      const { data } = await octokit.repos.createForAuthenticatedUser({
+        name: templateName,
+        description: `Replit-ready template generated from ${owner}/${repo}`,
+        public: true,
+        auto_init: false,
+      });
+      newRepo = data;
+    }
     
     console.log(`[Template] Pushing to ${newRepo.html_url}...`);
     
     // Add remote and push
-    await repoGit.addRemote('origin', newRepo.clone_url.replace('https://', `https://${TEMPLATE_BOT_TOKEN}@`));
-    await repoGit.push('origin', 'main', ['--set-upstream']);
+    const authCloneUrl = newRepo.clone_url.replace('https://', `https://${TEMPLATE_BOT_TOKEN}@`);
+    await repoGit.addRemote('origin', authCloneUrl);
+    
+    try {
+      await repoGit.push('origin', 'main', ['--set-upstream']);
+    } catch (pushError: any) {
+      // Try pushing to 'master' if 'main' fails
+      console.log('[Template] Push to main failed, trying master branch');
+      await repoGit.push('origin', 'master', ['--set-upstream']);
+    }
     
     const templateRepoUrl = newRepo.html_url;
     const replitImportUrl = `https://replit.com/github/${newRepo.full_name}`;
     
     console.log(`[Template] Success! Template available at ${templateRepoUrl}`);
+    
+    cleanupNeeded = false; // Mark that we no longer need manual cleanup
     
     return {
       templateRepoUrl,
@@ -325,13 +379,29 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     };
   } catch (error: any) {
     console.error('[Template] Error generating template:', error);
-    throw new Error(`Template generation failed: ${error.message}`);
+    
+    // Provide more specific error messages
+    if (error.message?.includes('timeout')) {
+      throw new Error('Repository clone timeout: repository is too large or network is slow');
+    } else if (error.message?.includes('not configured')) {
+      throw error; // Pass through config errors
+    } else if (error.message?.includes('not found')) {
+      throw new Error(`Repository not found: ${owner}/${repo}`);
+    } else if (error.status === 422) {
+      throw new Error('GitHub repository creation failed: name already exists or invalid');
+    } else if (error.status === 403) {
+      throw new Error('GitHub authentication failed: check TEMPLATE_BOT_TOKEN permissions');
+    } else {
+      throw new Error(`Template generation failed: ${error.message || 'Unknown error'}`);
+    }
   } finally {
-    // Cleanup temp directory
-    try {
-      tmpDir.removeCallback();
-    } catch (error) {
-      console.error('[Template] Error cleaning up temp directory:', error);
+    // Always cleanup temp directory, even on failure
+    if (cleanupNeeded) {
+      try {
+        tmpDir.removeCallback();
+      } catch (error) {
+        console.error('[Template] Error cleaning up temp directory:', error);
+      }
     }
   }
 }

@@ -26,6 +26,7 @@ export default function Deck() {
   const [suggestionsCache, setSuggestionsCache] = useState<Record<number, ProjectSuggestion>>({});
   const [preflightModalOpen, setPreflightModalOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
+  const [isTemplateGenerating, setIsTemplateGenerating] = useState(false);
 
   // Get listId from URL query params or use default
   const listId = useMemo(() => {
@@ -200,6 +201,8 @@ export default function Deck() {
       return response.json();
     },
     onSuccess: (data: TemplateResponse) => {
+      setIsTemplateGenerating(false);
+      
       toast({
         title: "Template Created! 🎉",
         description: `Launching ${data.templateName} in Replit...`,
@@ -209,32 +212,34 @@ export default function Deck() {
       window.open(data.replitImportUrl, "_blank");
     },
     onError: (error: any, repo) => {
+      setIsTemplateGenerating(false);
+      
       console.error('Template generation failed:', error);
       
-      // Show helpful error message
+      // Determine error message based on error type
+      let errorTitle = "Template Generation Failed";
+      let errorDescription = "Couldn't create template. Launching original repo instead.";
+      
       if (error.message?.includes('not configured')) {
-        toast({
-          title: "Template Generation Not Available",
-          description: "This feature requires GitHub configuration. Launching original repo instead.",
-          variant: "destructive",
-        });
+        errorTitle = "Template Generation Not Available";
+        errorDescription = "This feature requires GitHub configuration. Launching original repo instead.";
       } else if (error.message?.includes('timeout')) {
-        toast({
-          title: "Repository Too Large",
-          description: "The repository is too large to convert. Launching original repo instead.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Template Generation Failed",
-          description: "Couldn't create template. Launching original repo instead.",
-          variant: "destructive",
-        });
+        errorTitle = "Repository Too Large";
+        errorDescription = "The repository is too large to convert. Launching original repo instead.";
       }
       
-      // Fallback to launching original repo
-      const replitUrl = `https://replit.com/github.com/${repo.full_name}`;
-      window.open(replitUrl, "_blank");
+      // Show error toast
+      toast({
+        title: errorTitle,
+        description: errorDescription,
+        variant: "destructive",
+      });
+      
+      // Fallback: launch original repo after a short delay to ensure toast is shown
+      setTimeout(() => {
+        const replitUrl = `https://replit.com/github.com/${repo.full_name}`;
+        window.open(replitUrl, "_blank");
+      }, 500);
     },
   });
 
@@ -290,7 +295,10 @@ export default function Deck() {
   }, []);
 
   const handleConvertToTemplate = useCallback(() => {
-    if (!currentRepo) return;
+    // Prevent duplicate submissions with immediate local flag
+    if (!currentRepo || isTemplateGenerating || templateMutation.isPending) return;
+    
+    setIsTemplateGenerating(true);
     
     toast({
       title: "Generating Replit Template...",
@@ -298,7 +306,7 @@ export default function Deck() {
     });
     
     templateMutation.mutate(currentRepo);
-  }, [currentRepo, templateMutation, toast]);
+  }, [currentRepo, isTemplateGenerating, templateMutation, toast]);
 
   const handleRestart = useCallback(() => {
     setCurrentIndex(0);
@@ -386,6 +394,7 @@ export default function Deck() {
                 onSkip={handleSkip}
                 onLaunch={handleLaunch}
                 onConvertToTemplate={handleConvertToTemplate}
+                isProcessing={isTemplateGenerating || templateMutation.isPending}
                 isTop={index === 0}
                 index={index}
                 style={{
