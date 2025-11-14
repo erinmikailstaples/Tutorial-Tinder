@@ -7,11 +7,11 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { EmptyState } from "@/components/empty-state";
 import { DeckHeader } from "@/components/deck-header";
 import { PreflightModal } from "@/components/preflight-modal";
-import { GitHubConnectDialog } from "@/components/github-connect-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_LIST_ID } from "@shared/lists";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 
 // Local storage keys
 const SAVED_REPOS_KEY = "tutorial-tinder-saved";
@@ -20,6 +20,7 @@ const SKIPPED_REPOS_KEY = "tutorial-tinder-skipped";
 export default function Deck() {
   const { toast } = useToast();
   const searchString = useSearch();
+  const { isAuthenticated, isGitHubConnected, connectGitHub } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [savedRepos, setSavedRepos] = useState<number[]>([]);
   const [skippedRepos, setSkippedRepos] = useState<number[]>([]);
@@ -28,7 +29,6 @@ export default function Deck() {
   const [preflightModalOpen, setPreflightModalOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [isTemplateGenerating, setIsTemplateGenerating] = useState(false);
-  const [githubConnectDialogOpen, setGithubConnectDialogOpen] = useState(false);
 
   // Get listId from URL query params or use default
   const listId = useMemo(() => {
@@ -150,11 +150,22 @@ export default function Deck() {
     onError: (error: any, repo) => {
       console.error('Failed to star repository:', error);
       
-      // Show helpful error message
-      if (error.message?.includes('Unauthorized') || error.message?.includes('connect')) {
+      // Check if error is due to missing GitHub connection
+      if (error.message?.includes('GitHub connection required') || error.message?.includes('requiresGitHub')) {
         toast({
           title: "GitHub Connection Required",
-          description: "Please make sure your GitHub account is connected in Replit.",
+          description: "Connect your GitHub account to star repositories.",
+          variant: "destructive",
+          duration: 6000,
+          action: {
+            label: "Connect GitHub",
+            onClick: connectGitHub,
+          },
+        });
+      } else if (error.message?.includes('Authentication required') || error.message?.includes('Unauthorized')) {
+        toast({
+          title: "Please Log In",
+          description: "You need to be logged in to star repositories.",
           variant: "destructive",
           duration: 6000,
         });
@@ -245,10 +256,29 @@ export default function Deck() {
       
       console.error('Template generation failed:', error);
       
-      // Check if error requires GitHub authentication
-      if (error.response?.status === 401 || error.requiresAuth) {
-        // Show GitHub connect dialog instead of error toast
-        setGithubConnectDialogOpen(true);
+      // Check if error requires GitHub connection
+      if (error.message?.includes('GitHub connection required') || error.message?.includes('requiresGitHub')) {
+        toast({
+          title: "GitHub Connection Required",
+          description: "Connect your GitHub account to create templates.",
+          variant: "destructive",
+          duration: 6000,
+          action: {
+            label: "Connect GitHub",
+            onClick: connectGitHub,
+          },
+        });
+        return;
+      }
+      
+      // Check if error requires authentication
+      if (error.message?.includes('Authentication required') || error.message?.includes('Unauthorized')) {
+        toast({
+          title: "Please Log In",
+          description: "You need to be logged in to create templates.",
+          variant: "destructive",
+          duration: 6000,
+        });
         return;
       }
       
@@ -456,10 +486,6 @@ export default function Deck() {
         isLoading={preflightMutation.isPending}
       />
 
-      <GitHubConnectDialog
-        open={githubConnectDialogOpen}
-        onOpenChange={setGithubConnectDialogOpen}
-      />
     </div>
   );
 }
