@@ -151,7 +151,7 @@ export default function Deck() {
       console.error('Failed to star repository:', error);
       
       // Check if error is due to missing GitHub connection
-      if (error.message?.includes('GitHub connection required') || error.message?.includes('requiresGitHub')) {
+      if (error.requiresGitHub || error.message?.includes('GitHub connection required')) {
         toast({
           title: "GitHub Connection Required",
           description: "Connect your GitHub account to star repositories.",
@@ -162,7 +162,7 @@ export default function Deck() {
             onClick: connectGitHub,
           },
         });
-      } else if (error.message?.includes('Authentication required') || error.message?.includes('Unauthorized')) {
+      } else if (error.requiresAuth || error.message?.includes('Authentication required') || error.message?.includes('log in')) {
         toast({
           title: "Please Log In",
           description: "You need to be logged in to star repositories.",
@@ -257,7 +257,7 @@ export default function Deck() {
       console.error('Template generation failed:', error);
       
       // Check if error requires GitHub connection
-      if (error.message?.includes('GitHub connection required') || error.message?.includes('requiresGitHub')) {
+      if (error.requiresGitHub || error.message?.includes('GitHub connection required')) {
         toast({
           title: "GitHub Connection Required",
           description: "Connect your GitHub account to create templates.",
@@ -272,7 +272,7 @@ export default function Deck() {
       }
       
       // Check if error requires authentication
-      if (error.message?.includes('Authentication required') || error.message?.includes('Unauthorized')) {
+      if (error.requiresAuth || error.message?.includes('Authentication required') || error.message?.includes('log in')) {
         toast({
           title: "Please Log In",
           description: "You need to be logged in to create templates.",

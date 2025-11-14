@@ -5,16 +5,32 @@ async function throwIfResNotOk(res: Response) {
     // Try to parse JSON error response first
     const contentType = res.headers.get('content-type');
     if (contentType?.includes('application/json')) {
+      let errorData: any = null;
       try {
-        const errorData = await res.json();
+        errorData = await res.json();
+      } catch (jsonError) {
+        // Fall through to text parsing if JSON parsing fails
+        console.error('JSON parse error:', jsonError);
+      }
+      
+      if (errorData) {
         const error: any = new Error(errorData.message || res.statusText);
         error.status = res.status;
         error.response = { status: res.status, data: errorData };
-        // Preserve any additional error properties (like requiresAuth)
-        Object.assign(error, errorData);
+        // Preserve any additional error properties (like requiresGitHub, requiresAuth)
+        if (errorData.requiresGitHub) {
+          error.requiresGitHub = true;
+        }
+        if (errorData.requiresAuth) {
+          error.requiresAuth = true;
+        }
+        // Copy all error data properties to error object
+        Object.keys(errorData).forEach(key => {
+          if (key !== 'message') {
+            error[key] = errorData[key];
+          }
+        });
         throw error;
-      } catch (jsonError) {
-        // Fall through to text parsing if JSON parsing fails
       }
     }
     

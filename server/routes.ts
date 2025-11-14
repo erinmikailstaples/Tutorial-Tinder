@@ -34,7 +34,8 @@ const requireGitHub: RequestHandler = async (req: any, res, next) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ 
       error: "Authentication required",
-      message: "Please log in to continue" 
+      message: "Please log in to continue",
+      requiresAuth: true
     });
   }
 
