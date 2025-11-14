@@ -1,8 +1,22 @@
+import { useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Code2, Rocket, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Code2, Rocket, Zap, CheckCircle2 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
+import { GitHubConnectDialog } from "@/components/github-connect-dialog";
 
 export default function Landing() {
+  const [githubConnectDialogOpen, setGithubConnectDialogOpen] = useState(false);
+
+  // Check GitHub connection status
+  const { data: githubStatus, isLoading: isLoadingGitHubStatus } = useQuery<{ connected: boolean; message: string }>({
+    queryKey: ['/api/github/status'],
+  });
+
+  const isGitHubConnected = githubStatus?.connected ?? false;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -30,10 +44,37 @@ export default function Landing() {
             </span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
             Discover curated tutorials and projects perfect for learning. 
             One click to open in Replit and start building immediately.
           </p>
+
+          {/* GitHub Connection Status */}
+          {!isLoadingGitHubStatus && (
+            <div className="mb-8 flex flex-col items-center gap-3">
+              {isGitHubConnected ? (
+                <Badge 
+                  variant="secondary" 
+                  className="px-4 py-2 text-sm gap-2"
+                  data-testid="badge-github-connected"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  GitHub Connected
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setGithubConnectDialogOpen(true)}
+                  className="gap-2"
+                  data-testid="button-connect-github-landing"
+                >
+                  <SiGithub className="h-5 w-5" />
+                  Connect GitHub to Create Templates
+                </Button>
+              )}
+            </div>
+          )}
 
           <Link href="/select-list">
             <Button 
@@ -47,6 +88,11 @@ export default function Landing() {
           </Link>
         </div>
       </div>
+
+      <GitHubConnectDialog
+        open={githubConnectDialogOpen}
+        onOpenChange={setGithubConnectDialogOpen}
+      />
 
       {/* Features Section */}
       <div className="py-20 md:py-32 px-6">

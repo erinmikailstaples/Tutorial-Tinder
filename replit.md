@@ -10,6 +10,9 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 
 ### Landing Page
 - Hero section with gradient background and decorative code elements
+- GitHub connection status and prompt (checks if user has connected account)
+  - Shows "Connect GitHub to Create Templates" button if not connected
+  - Shows "GitHub Connected" badge with checkmark if connected
 - Clear value proposition and call-to-action
 - Three feature cards highlighting key benefits:
   - Curated Tutorials
