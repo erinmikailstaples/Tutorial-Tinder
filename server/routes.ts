@@ -321,14 +321,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check GitHub connection status (per-user authentication only)
+  // Check GitHub connection status
   app.get("/api/github/status", async (req, res) => {
     try {
-      // Only consider Replit connector tokens as "connected"
-      // Shared environment tokens (GITHUB_TOKEN) don't count for per-user features
-      const hasPerUserToken = !process.env.GITHUB_TOKEN && await getAccessToken();
+      const githubToken = await getAccessToken();
       
-      if (hasPerUserToken) {
+      if (githubToken) {
         return res.json({ 
           connected: true,
           message: "GitHub account is connected"

@@ -3,13 +3,12 @@ import { Octokit } from '@octokit/rest';
 let connectionSettings: any;
 
 async function getAccessToken() {
-  // Check for manual GitHub token first (for development)
-  if (process.env.GITHUB_TOKEN) {
-    return process.env.GITHUB_TOKEN;
-  }
-
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+  // Check cached connection settings first (with expiry check)
+  if (connectionSettings && connectionSettings.settings?.expires_at) {
+    const expiresAt = new Date(connectionSettings.settings.expires_at).getTime();
+    if (expiresAt > Date.now()) {
+      return connectionSettings.settings.access_token;
+    }
   }
   
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -20,12 +19,23 @@ async function getAccessToken() {
     : null;
 
   if (!xReplitToken) {
-    // Return null to allow unauthenticated requests
+    console.log('[GitHub] No Replit token available, checking for GITHUB_TOKEN env var');
+    // Fallback to manual GitHub token for development
+    if (process.env.GITHUB_TOKEN) {
+      console.log('[GitHub] Using GITHUB_TOKEN environment variable');
+      return process.env.GITHUB_TOKEN;
+    }
     return null;
   }
 
+  if (!hostname) {
+    console.error('[GitHub] REPLIT_CONNECTORS_HOSTNAME not set');
+    return process.env.GITHUB_TOKEN || null;
+  }
+
   try {
-    connectionSettings = await fetch(
+    console.log('[GitHub] Fetching connector token...');
+    const response = await fetch(
       'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=github',
       {
         headers: {
@@ -33,13 +43,33 @@ async function getAccessToken() {
           'X_REPLIT_TOKEN': xReplitToken
         }
       }
-    ).then(res => res.json()).then(data => data.items?.[0]);
+    );
+    
+    if (!response.ok) {
+      console.error('[GitHub] Connector API error:', response.status, response.statusText);
+      return process.env.GITHUB_TOKEN || null;
+    }
+    
+    const data = await response.json();
+    connectionSettings = data.items?.[0];
+
+    if (!connectionSettings) {
+      console.log('[GitHub] No GitHub connector found');
+      return process.env.GITHUB_TOKEN || null;
+    }
 
     const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-    return accessToken || null;
+    
+    if (accessToken) {
+      console.log('[GitHub] Successfully retrieved connector token');
+      return accessToken;
+    }
+    
+    console.log('[GitHub] No access token in connector settings');
+    return process.env.GITHUB_TOKEN || null;
   } catch (error) {
-    console.warn('Failed to get Replit connector token, falling back to unauthenticated:', error);
-    return null;
+    console.error('[GitHub] Error fetching connector token:', error);
+    return process.env.GITHUB_TOKEN || null;
   }
 }
 
