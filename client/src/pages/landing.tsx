@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Code2, Rocket, Zap, CheckCircle2 } from "lucide-react";
+import { Code2, Rocket, Zap, CheckCircle2, Heart, Hammer, Wrench, Sparkles } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import { GitHubConnectDialog } from "@/components/github-connect-dialog";
 
@@ -26,27 +26,38 @@ export default function Landing() {
         
         {/* Decorative Elements */}
         <div className="absolute inset-0 opacity-10">
+          {/* Code brackets */}
           <div className="absolute top-20 left-10 text-6xl font-mono text-primary">{"{"}</div>
           <div className="absolute top-40 right-20 text-6xl font-mono text-primary">{"}"}</div>
           <div className="absolute bottom-32 left-1/4 text-4xl font-mono text-accent-foreground">{"<>"}</div>
           <div className="absolute bottom-20 right-1/3 text-4xl font-mono text-accent-foreground">{"</>"}</div>
+          
+          {/* Hearts */}
+          <Heart className="absolute top-32 right-1/4 h-12 w-12 text-primary fill-primary" />
+          <Heart className="absolute bottom-40 left-20 h-8 w-8 text-accent-foreground fill-accent-foreground" />
+          <Heart className="absolute top-1/2 left-10 h-10 w-10 text-primary fill-primary" />
+          
+          {/* Builder icons */}
+          <Hammer className="absolute top-1/3 right-12 h-14 w-14 text-accent-foreground" />
+          <Wrench className="absolute bottom-1/3 right-1/4 h-10 w-10 text-primary" />
+          <Sparkles className="absolute top-1/4 left-1/3 h-12 w-12 text-primary" />
+          <Rocket className="absolute bottom-1/4 left-1/3 h-16 w-16 text-accent-foreground" />
         </div>
 
         {/* Content */}
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
           <h1 className="font-bold text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight">
-            Swipe through beginner-friendly{" "}
-            <span className="text-primary">GitHub repos</span>
+            From "just browsing" to{" "}
+            <span className="text-primary">"I'm building"</span>
             <br />
-            and launch them in{" "}
+            at the speed of a{" "}
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Replit
+              swipe
             </span>
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
-            Discover curated tutorials and projects perfect for learning. 
-            One click to open in Replit and start building immediately.
+            Swipe, match, and instantly launch repos that look fun. You'll learn way more from rollin' with real code than from a perfectly polished README trying to catfish you.
           </p>
 
           {/* GitHub Connection Status */}
