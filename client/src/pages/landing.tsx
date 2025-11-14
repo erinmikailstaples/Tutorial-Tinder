@@ -1,26 +1,26 @@
-import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Code2, Rocket, Zap, CheckCircle2, Heart, Hammer, Wrench, Sparkles } from "lucide-react";
 import { SiGithub } from "react-icons/si";
-import { GitHubConnectDialog } from "@/components/github-connect-dialog";
+import { useAuth } from "@/lib/auth";
+import { UserMenu } from "@/components/user-menu";
 
 export default function Landing() {
-  const [githubConnectDialogOpen, setGithubConnectDialogOpen] = useState(false);
-
-  // Check GitHub connection status
-  const { data: githubStatus, isLoading: isLoadingGitHubStatus } = useQuery<{ connected: boolean; message: string }>({
-    queryKey: ['/api/github/status'],
-  });
-
-  const isGitHubConnected = githubStatus?.connected ?? false;
+  const { isAuthenticated, isGitHubConnected, isLoadingGitHub, connectGitHub } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <h2 className="font-bold text-xl">Tutorial Tinder</h2>
+          <UserMenu />
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-16">
         {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/10"></div>
         
@@ -61,7 +61,7 @@ export default function Landing() {
           </p>
 
           {/* GitHub Connection Status */}
-          {!isLoadingGitHubStatus && (
+          {isAuthenticated && !isLoadingGitHub && (
             <div className="mb-8 flex flex-col items-center gap-3">
               {isGitHubConnected ? (
                 <Badge 
@@ -76,7 +76,7 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => setGithubConnectDialogOpen(true)}
+                  onClick={connectGitHub}
                   className="gap-2"
                   data-testid="button-connect-github-landing"
                 >
@@ -99,11 +99,6 @@ export default function Landing() {
           </Link>
         </div>
       </div>
-
-      <GitHubConnectDialog
-        open={githubConnectDialogOpen}
-        onOpenChange={setGithubConnectDialogOpen}
-      />
 
       {/* Features Section */}
       <div className="py-20 md:py-32 px-6">

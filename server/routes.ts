@@ -8,6 +8,7 @@ import { generateTemplate } from "./template-generator";
 import type { ProjectSuggestion, TemplateResponse } from "@shared/schema";
 import { preflightRequestSchema, templateRequestSchema } from "@shared/schema";
 import { getGitHubTokenForUser } from "./githubOAuth";
+import { storage } from "./storage";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
 let redditListCache: { repositories: any[]; timestamp: number } | null = null;
