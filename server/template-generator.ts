@@ -308,6 +308,19 @@ export async function generateTemplate(
     await repoGit.init();
     await repoGit.addConfig('user.name', 'Tutorial Tinder Bot');
     await repoGit.addConfig('user.email', 'bot@tutorial-tinder.app');
+    
+    // Rename branch to 'main' if it's not already (git init may create 'master')
+    try {
+      const branches = await repoGit.branchLocal();
+      const currentBranch = branches.current || branches.all[0];
+      if (currentBranch && currentBranch !== 'main') {
+        await repoGit.branch(['-M', 'main']);
+        console.log(`[Template] Renamed branch from ${currentBranch} to main`);
+      }
+    } catch (branchError) {
+      console.log('[Template] Branch already named main or minor error:', branchError);
+    }
+    
     await repoGit.add('.');
     await repoGit.commit(`chore: generate Replit-friendly template from ${owner}/${repo}`);
     
@@ -355,18 +368,28 @@ export async function generateTemplate(
       console.log('[Template] Created in user account');
     }
     
-    console.log(`[Template] Pushing to ${newRepo.html_url}...`);
+    console.log(`[Template] Step 5/6: Pushing to ${newRepo.html_url}...`);
     
     // Add remote and push
     const authCloneUrl = newRepo.clone_url.replace('https://', `https://${githubToken}@`);
     await repoGit.addRemote('origin', authCloneUrl);
     
+    // Push to main branch
+    await repoGit.push('origin', 'main', ['--set-upstream']);
+    console.log('[Template] Successfully pushed to main branch');
+    
+    // Update the default branch to 'main' so files are visible
+    console.log('[Template] Setting default branch to main...');
     try {
-      await repoGit.push('origin', 'main', ['--set-upstream']);
-    } catch (pushError: any) {
-      // Try pushing to 'master' if 'main' fails
-      console.log('[Template] Push to main failed, trying master branch');
-      await repoGit.push('origin', 'master', ['--set-upstream']);
+      await octokit.repos.update({
+        owner: newRepo.owner.login,
+        repo: templateName,
+        default_branch: 'main',
+      });
+      console.log('[Template] Default branch updated to main');
+    } catch (branchError: any) {
+      console.log('[Template] Warning: Could not update default branch:', branchError.message);
+      // This is non-fatal, continue anyway
     }
     
     const templateRepoUrl = newRepo.html_url;
