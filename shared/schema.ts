@@ -154,3 +154,17 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// GitHub OAuth tokens table - stores per-user GitHub tokens
+export const githubTokens = pgTable("github_tokens", {
+  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  accessToken: varchar("access_token").notNull(),
+  refreshToken: varchar("refresh_token"),
+  expiresAt: timestamp("expires_at"),
+  scope: varchar("scope"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type GithubToken = typeof githubTokens.$inferSelect;
+export type InsertGithubToken = typeof githubTokens.$inferInsert;
