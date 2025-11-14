@@ -396,7 +396,7 @@ export async function generateTemplate(
     }
     
     const templateRepoUrl = newRepo.html_url;
-    const replitImportUrl = `https://replit.com/github/${newRepo.full_name}`;
+    const replitImportUrl = `https://replit.com/github.com/${newRepo.full_name}`;
     
     console.log(`[Template] Success! Template available at ${templateRepoUrl}`);
     
