@@ -124,8 +124,8 @@ export async function fetchReadme(owner: string, repo: string) {
 }
 
 // Check if the authenticated user has starred a repository
-export async function checkIfStarred(owner: string, repo: string): Promise<boolean> {
-  const octokit = await getUncachableGitHubClient();
+export async function checkIfStarred(owner: string, repo: string, token?: string): Promise<boolean> {
+  const octokit = token ? new Octokit({ auth: token }) : await getUncachableGitHubClient();
   
   try {
     await octokit.rest.activity.checkRepoIsStarredByAuthenticatedUser({
@@ -144,8 +144,8 @@ export async function checkIfStarred(owner: string, repo: string): Promise<boole
 }
 
 // Star a repository for the authenticated user
-export async function starRepository(owner: string, repo: string): Promise<void> {
-  const octokit = await getUncachableGitHubClient();
+export async function starRepository(owner: string, repo: string, token?: string): Promise<void> {
+  const octokit = token ? new Octokit({ auth: token }) : await getUncachableGitHubClient();
   
   try {
     await octokit.rest.activity.starRepoForAuthenticatedUser({
@@ -160,8 +160,8 @@ export async function starRepository(owner: string, repo: string): Promise<void>
 }
 
 // Unstar a repository for the authenticated user
-export async function unstarRepository(owner: string, repo: string): Promise<void> {
-  const octokit = await getUncachableGitHubClient();
+export async function unstarRepository(owner: string, repo: string, token?: string): Promise<void> {
+  const octokit = token ? new Octokit({ auth: token }) : await getUncachableGitHubClient();
   
   try {
     await octokit.rest.activity.unstarRepoForAuthenticatedUser({

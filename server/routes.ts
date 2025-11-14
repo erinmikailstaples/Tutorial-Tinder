@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkIfStarred, getAccessToken } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
@@ -7,6 +7,7 @@ import { analyzeRepository } from "./preflight";
 import { generateTemplate } from "./template-generator";
 import type { ProjectSuggestion, TemplateResponse } from "@shared/schema";
 import { preflightRequestSchema, templateRequestSchema } from "@shared/schema";
+import { getGitHubTokenForUser } from "./githubOAuth";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
 let redditListCache: { repositories: any[]; timestamp: number } | null = null;
@@ -16,7 +17,69 @@ const REDDIT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 const aiSuggestionsCache = new Map<string, { data: ProjectSuggestion; timestamp: number }>();
 const AI_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+// Middleware to require authentication
+const requireAuth: RequestHandler = (req: any, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ 
+      error: "Authentication required",
+      message: "Please log in to continue" 
+    });
+  }
+  next();
+};
+
+// Middleware to require GitHub connection
+const requireGitHub: RequestHandler = async (req: any, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ 
+      error: "Authentication required",
+      message: "Please log in to continue" 
+    });
+  }
+
+  const userId = req.user.claims.sub;
+  const githubToken = await getGitHubTokenForUser(userId);
+
+  if (!githubToken) {
+    return res.status(401).json({
+      error: "GitHub connection required",
+      message: "Please connect your GitHub account to use this feature",
+      requiresGitHub: true
+    });
+  }
+
+  // Attach token to request for use in route handler
+  req.githubToken = githubToken;
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Get current user info
+  app.get("/api/user", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+      });
+    } catch (error: any) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch user",
+        message: error.message 
+      });
+    }
+  });
+
   // Fetch all available lists
   app.get("/api/lists", async (req, res) => {
     try {
@@ -229,10 +292,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if a repository is starred by the authenticated user
-  app.get("/api/star/:owner/:repo", async (req, res) => {
+  app.get("/api/star/:owner/:repo", requireGitHub, async (req: any, res) => {
     try {
       const { owner, repo } = req.params;
-      const isStarred = await checkIfStarred(owner, repo);
+      const isStarred = await checkIfStarred(owner, repo, req.githubToken);
       
       res.json({ starred: isStarred });
     } catch (error: any) {
@@ -245,10 +308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Star a repository for the authenticated user
-  app.post("/api/star/:owner/:repo", async (req, res) => {
+  app.post("/api/star/:owner/:repo", requireGitHub, async (req: any, res) => {
     try {
       const { owner, repo } = req.params;
-      await starRepository(owner, repo);
+      await starRepository(owner, repo, req.githubToken);
       
       res.json({ 
         success: true,
@@ -273,10 +336,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unstar a repository for the authenticated user
-  app.delete("/api/star/:owner/:repo", async (req, res) => {
+  app.delete("/api/star/:owner/:repo", requireGitHub, async (req: any, res) => {
     try {
       const { owner, repo } = req.params;
-      await unstarRepository(owner, repo);
+      await unstarRepository(owner, repo, req.githubToken);
       
       res.json({ 
         success: true,
@@ -321,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check GitHub connection status
+  // Check GitHub connection status (legacy connector - deprecated)
   app.get("/api/github/status", async (req, res) => {
     try {
       const githubToken = await getAccessToken();
@@ -329,10 +392,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (githubToken) {
         return res.json({ 
           connected: true,
-          message: "GitHub account is connected"
+          message: "GitHub account is connected (legacy connector)"
         });
       } else {
-        // Get connector hostname for proper connect URL
         const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME || 'replit.com';
         return res.json({ 
           connected: false,
@@ -352,8 +414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate Replit-ready template from existing repository
-  app.post("/api/template", async (req, res) => {
+  // Generate Replit-ready template from existing repository (requires GitHub connection)
+  app.post("/api/template", requireGitHub, async (req: any, res) => {
     // Validate request body with zod safeParse
     const validation = templateRequestSchema.safeParse(req.body);
     
@@ -368,20 +430,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { owner, repo, defaultBranch } = validation.data;
     
     try {
-      // Get user's GitHub token from Replit connector
-      const githubToken = await getAccessToken();
-      
-      if (!githubToken) {
-        console.log('[Template] No GitHub token available');
-        return res.status(401).json({
-          error: "GitHub authentication required",
-          message: "Please connect your GitHub account to generate templates",
-          requiresAuth: true
-        });
-      }
+      const githubToken = req.githubToken; // From requireGitHub middleware
       
       console.log(`[Template] Starting template generation for ${owner}/${repo}...`);
-      console.log(`[Template] User has GitHub token: ${githubToken ? 'yes' : 'no'}`);
+      console.log(`[Template] Using per-user GitHub token`);
 
       // Optional: Allow targeting a specific org via env var (for advanced users)
       const targetOrg = process.env.TEMPLATE_ORG;
@@ -414,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  error.status === 403 ? "GitHub permission denied" :
                  "GitHub API error",
           message: detailedMessage,
-          requiresAuth: error.status === 401 || error.status === 403
+          requiresGitHub: error.status === 401 || error.status === 403
         });
       }
 
@@ -423,7 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({
           error: "GitHub authentication required",
           message: detailedMessage,
-          requiresAuth: true
+          requiresGitHub: true
         });
       }
 
@@ -445,7 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({
           error: "GitHub authentication failed",
           message: detailedMessage,
-          requiresAuth: true
+          requiresGitHub: true
         });
       }
 

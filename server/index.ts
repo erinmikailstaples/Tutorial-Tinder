@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupAuth } from "./replitAuth";
+import { setupGitHubOAuth } from "./githubOAuth";
 
 const app = express();
 
@@ -47,6 +49,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Setup authentication and session management
+  await setupAuth(app);
+  
+  // Setup GitHub OAuth for per-user GitHub access
+  setupGitHubOAuth(app);
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
