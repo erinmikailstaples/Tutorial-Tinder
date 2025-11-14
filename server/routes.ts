@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkIfStarred } from "./github";
+import { fetchStarredList, fetchReadme, starRepository, unstarRepository, checkIfStarred, getAccessToken } from "./github";
 import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 import { generateProjectSuggestions } from "./ai";
 import { analyzeRepository } from "./preflight";
@@ -321,6 +321,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check GitHub connection status (per-user authentication only)
+  app.get("/api/github/status", async (req, res) => {
+    try {
+      // Only consider Replit connector tokens as "connected"
+      // Shared environment tokens (GITHUB_TOKEN) don't count for per-user features
+      const hasPerUserToken = !process.env.GITHUB_TOKEN && await getAccessToken();
+      
+      if (hasPerUserToken) {
+        return res.json({ 
+          connected: true,
+          message: "GitHub account is connected"
+        });
+      } else {
+        // Get connector hostname for proper connect URL
+        const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME || 'replit.com';
+        return res.json({ 
+          connected: false,
+          message: "GitHub account not connected",
+          connectUrl: `https://${hostname}/~/cli/connect/github`
+        });
+      }
+    } catch (error: any) {
+      console.error('[GitHub Status] Error checking connection:', error);
+      const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME || 'replit.com';
+      res.status(500).json({
+        connected: false,
+        error: "Failed to check GitHub connection",
+        message: error.message,
+        connectUrl: `https://${hostname}/~/cli/connect/github`
+      });
+    }
+  });
+
   // Generate Replit-ready template from existing repository
   app.post("/api/template", async (req, res) => {
     // Validate request body with zod safeParse
@@ -337,9 +370,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { owner, repo, defaultBranch } = validation.data;
     
     try {
+      // Get user's GitHub token from Replit connector
+      const githubToken = await getAccessToken();
+      
+      if (!githubToken) {
+        return res.status(401).json({
+          error: "GitHub authentication required",
+          message: "Please connect your GitHub account to generate templates",
+          requiresAuth: true
+        });
+      }
+      
       console.log(`[Template] Generating template for ${owner}/${repo}...`);
 
-      const result = await generateTemplate(validation.data);
+      // Optional: Allow targeting a specific org via env var (for advanced users)
+      const targetOrg = process.env.TEMPLATE_ORG;
+      const result = await generateTemplate(validation.data, githubToken, targetOrg);
 
       // Return properly typed TemplateResponse
       res.json(result);
@@ -358,15 +404,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  error.status === 401 ? "GitHub authentication failed" :
                  error.status === 403 ? "GitHub permission denied" :
                  "GitHub API error",
-          message: detailedMessage
+          message: detailedMessage,
+          requiresAuth: error.status === 401 || error.status === 403
         });
       }
 
       // Handle specific error cases by message content
-      if (error.message?.includes('not configured')) {
-        return res.status(503).json({
-          error: "Template generation not configured",
-          message: detailedMessage
+      if (error.message?.includes('authentication required')) {
+        return res.status(401).json({
+          error: "GitHub authentication required",
+          message: detailedMessage,
+          requiresAuth: true
         });
       }
 
@@ -387,7 +435,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.message?.includes('authentication failed')) {
         return res.status(401).json({
           error: "GitHub authentication failed",
-          message: detailedMessage
+          message: detailedMessage,
+          requiresAuth: true
         });
       }
 

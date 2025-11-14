@@ -69,22 +69,26 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 
 ### Template Generation System
 - **One-Click Template Conversion**: Transforms any GitHub repo into a Replit-ready template
+- **Authentication**: Requires users to connect their GitHub account via Replit connector
+  - Templates are created in the user's personal GitHub account
+  - GitHubConnectDialog prompts users to connect if not already authenticated
+  - No manual token configuration required - handled automatically by Replit
 - Process flow:
-  1. Clones the repository (shallow clone, depth=1)
-  2. Detects language and framework automatically
-  3. Cleans unnecessary files (.github, node_modules, tests, build artifacts)
-  4. Creates `.replit` configuration file with detected run command
-  5. Generates new README with setup instructions and attribution
-  6. Initializes new git repository
-  7. Pushes to new GitHub repository in configured organization
-  8. Launches the template in Replit automatically
+  1. Checks if user has connected GitHub account (shows connect dialog if not)
+  2. Clones the repository (shallow clone, depth=1)
+  3. Detects language and framework automatically
+  4. Cleans unnecessary files (.github, node_modules, tests, build artifacts)
+  5. Creates `.replit` configuration file with detected run command
+  6. Generates new README with setup instructions and attribution
+  7. Initializes new git repository
+  8. Pushes to new GitHub repository in user's account
+  9. Launches the template in Replit automatically
 - Supported languages: Node.js, Python, others
 - Framework detection: Next.js, React, Vite, Flask, FastAPI, Django
 - Fallback handling: If template generation fails, launches original repo
-- Security: 60-second clone timeout, automatic cleanup, origin validation
-- Configuration via environment variables:
-  - `TEMPLATE_BOT_TOKEN` or `GITHUB_TOKEN`: GitHub personal access token
-  - `TEMPLATE_ORG`: Target organization for template repos (default: tutorial-tinder-templates)
+- Security: 60-second clone timeout, automatic cleanup, origin validation, per-user token isolation
+- Optional configuration via environment variable:
+  - `TEMPLATE_ORG`: Target organization for templates (if user has org access)
 
 ## Tech Stack
 
@@ -132,16 +136,22 @@ Tutorial Tinder combines the engaging swipe mechanics of Tinder with educational
 - `GET /api/star/:owner/:repo` - Checks if repository is starred by authenticated user
 - `POST /api/star/:owner/:repo` - Stars repository on GitHub for authenticated user
 - `DELETE /api/star/:owner/:repo` - Unstars repository on GitHub for authenticated user
+- `GET /api/github/status` - Checks if user has connected their GitHub account via Replit connector
 - `POST /api/preflight` - Analyzes repository for Replit compatibility (clones, detects language, returns confidence score)
-- `POST /api/template` - Generates Replit-ready template from GitHub repository (clones, cleans, configures, pushes to new repo)
+- `POST /api/template` - Generates Replit-ready template from GitHub repository (requires GitHub connection, creates repo in user's account)
 
 ### GitHub Integration
 - Uses Replit GitHub connector for authenticated requests
 - Falls back to unauthenticated mode for development
-- Supports manual `GITHUB_TOKEN` environment variable
+- Supports manual `GITHUB_TOKEN` environment variable for development
 - Fetches starred repos and filters server-side against curated list configuration
 - **Starring**: Save button stars repositories on GitHub using authenticated API
-- Permissions: read:org, read:project, read:user, repo, user:email
+- **Template Generation**: Requires per-user GitHub authentication via Replit connector
+  - Frontend checks authentication status via `/api/github/status`
+  - Shows GitHubConnectDialog if user needs to connect
+  - Templates created in user's personal account (or TEMPLATE_ORG if configured)
+  - Token automatically managed by Replit connector
+- Permissions required: read:org, read:project, read:user, repo, user:email
 
 ## Project Structure
 
@@ -155,6 +165,7 @@ client/
 │   │   ├── swipeable-card.tsx # Swipe gesture wrapper
 │   │   ├── keyboard-shortcuts.tsx # Keyboard hints
 │   │   ├── preflight-modal.tsx # Preflight analysis results dialog
+│   │   ├── github-connect-dialog.tsx # GitHub connection prompt
 │   │   └── empty-state.tsx  # No more repos state
 │   ├── pages/
 │   │   ├── landing.tsx      # Hero and features

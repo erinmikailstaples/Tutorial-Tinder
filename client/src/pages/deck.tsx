@@ -7,6 +7,7 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { EmptyState } from "@/components/empty-state";
 import { DeckHeader } from "@/components/deck-header";
 import { PreflightModal } from "@/components/preflight-modal";
+import { GitHubConnectDialog } from "@/components/github-connect-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_LIST_ID } from "@shared/lists";
@@ -27,6 +28,7 @@ export default function Deck() {
   const [preflightModalOpen, setPreflightModalOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [isTemplateGenerating, setIsTemplateGenerating] = useState(false);
+  const [githubConnectDialogOpen, setGithubConnectDialogOpen] = useState(false);
 
   // Get listId from URL query params or use default
   const listId = useMemo(() => {
@@ -216,14 +218,18 @@ export default function Deck() {
       
       console.error('Template generation failed:', error);
       
+      // Check if error requires GitHub authentication
+      if (error.response?.status === 401 || error.requiresAuth) {
+        // Show GitHub connect dialog instead of error toast
+        setGithubConnectDialogOpen(true);
+        return;
+      }
+      
       // Determine error message based on error type
       let errorTitle = "Template Generation Failed";
       let errorDescription = "Couldn't create template. Launching original repo instead.";
       
-      if (error.message?.includes('not configured')) {
-        errorTitle = "Template Generation Not Available";
-        errorDescription = "This feature requires GitHub configuration. Launching original repo instead.";
-      } else if (error.message?.includes('timeout')) {
+      if (error.message?.includes('timeout')) {
         errorTitle = "Repository Too Large";
         errorDescription = "The repository is too large to convert. Launching original repo instead.";
       }
@@ -419,6 +425,11 @@ export default function Deck() {
         onLaunch={handleConfirmLaunch}
         onSkip={handleSkipPreflight}
         isLoading={preflightMutation.isPending}
+      />
+
+      <GitHubConnectDialog
+        open={githubConnectDialogOpen}
+        onOpenChange={setGithubConnectDialogOpen}
       />
     </div>
   );

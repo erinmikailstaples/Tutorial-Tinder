@@ -43,6 +43,9 @@ async function getAccessToken() {
   }
 }
 
+// Export getAccessToken for use in other modules (e.g., template generation)
+export { getAccessToken };
+
 // WARNING: Never cache this client.
 // Access tokens expire, so a new client must be created each time.
 // Always call this function again to get a fresh client.

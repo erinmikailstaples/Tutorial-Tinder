@@ -9,20 +9,6 @@ import { TemplateRequest, TemplateResponse } from '@shared/schema';
 tmp.setGracefulCleanup();
 
 const MAX_CLONE_TIMEOUT_MS = 60000; // 60 seconds
-const TEMPLATE_BOT_TOKEN = process.env.TEMPLATE_BOT_TOKEN || process.env.GITHUB_TOKEN;
-const TEMPLATE_ORG = process.env.TEMPLATE_ORG || 'tutorial-tinder-templates';
-
-/**
- * Validates that required environment variables are set
- */
-function validateEnvironment(): void {
-  if (!TEMPLATE_BOT_TOKEN) {
-    throw new Error('Template generation not configured: TEMPLATE_BOT_TOKEN or GITHUB_TOKEN environment variable is required');
-  }
-  if (!TEMPLATE_ORG) {
-    throw new Error('Template generation not configured: TEMPLATE_ORG environment variable is required');
-  }
-}
 
 interface DetectionResult {
   language: 'nodejs' | 'python' | 'other';
@@ -255,9 +241,14 @@ To suggest improvements to this template or the template generator, visit:
 /**
  * Main template generation function
  */
-export async function generateTemplate(request: TemplateRequest): Promise<TemplateResponse> {
-  // Validate environment
-  validateEnvironment();
+export async function generateTemplate(
+  request: TemplateRequest,
+  githubToken: string,
+  targetOwner?: string
+): Promise<TemplateResponse> {
+  if (!githubToken) {
+    throw new Error('GitHub authentication required: please connect your GitHub account');
+  }
   
   const { owner, repo, defaultBranch = 'main' } = request;
   
@@ -321,24 +312,38 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     
     // Create GitHub repo and push
     console.log('[Template] Creating GitHub repository...');
-    const octokit = new Octokit({ auth: TEMPLATE_BOT_TOKEN });
+    const octokit = new Octokit({ auth: githubToken });
     
     const timestamp = Date.now();
     const templateName = `${repo}-replit-template-${timestamp}`;
     
     let newRepo;
-    try {
-      const { data } = await octokit.repos.createInOrg({
-        org: TEMPLATE_ORG,
-        name: templateName,
-        description: `Replit-ready template generated from ${owner}/${repo}`,
-        public: true,
-        auto_init: false,
-      });
-      newRepo = data;
-    } catch (orgError: any) {
-      // Fallback to user repo if org creation fails
-      console.log(`[Template] Org creation failed (${orgError.message}), falling back to user repo`);
+    
+    // If targetOwner is specified, try to create in that org, otherwise create in user's account
+    if (targetOwner) {
+      try {
+        const { data } = await octokit.repos.createInOrg({
+          org: targetOwner,
+          name: templateName,
+          description: `Replit-ready template generated from ${owner}/${repo}`,
+          public: true,
+          auto_init: false,
+        });
+        newRepo = data;
+        console.log(`[Template] Created in organization: ${targetOwner}`);
+      } catch (orgError: any) {
+        // Fallback to user repo if org creation fails
+        console.log(`[Template] Org creation failed (${orgError.message}), falling back to user repo`);
+        const { data } = await octokit.repos.createForAuthenticatedUser({
+          name: templateName,
+          description: `Replit-ready template generated from ${owner}/${repo}`,
+          public: true,
+          auto_init: false,
+        });
+        newRepo = data;
+      }
+    } else {
+      // Create in user's personal account
       const { data } = await octokit.repos.createForAuthenticatedUser({
         name: templateName,
         description: `Replit-ready template generated from ${owner}/${repo}`,
@@ -346,12 +351,13 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
         auto_init: false,
       });
       newRepo = data;
+      console.log('[Template] Created in user account');
     }
     
     console.log(`[Template] Pushing to ${newRepo.html_url}...`);
     
     // Add remote and push
-    const authCloneUrl = newRepo.clone_url.replace('https://', `https://${TEMPLATE_BOT_TOKEN}@`);
+    const authCloneUrl = newRepo.clone_url.replace('https://', `https://${githubToken}@`);
     await repoGit.addRemote('origin', authCloneUrl);
     
     try {
@@ -383,14 +389,14 @@ export async function generateTemplate(request: TemplateRequest): Promise<Templa
     // Provide more specific error messages
     if (error.message?.includes('timeout')) {
       throw new Error('Repository clone timeout: repository is too large or network is slow');
-    } else if (error.message?.includes('not configured')) {
-      throw error; // Pass through config errors
+    } else if (error.message?.includes('authentication required')) {
+      throw error; // Pass through auth errors
     } else if (error.message?.includes('not found')) {
       throw new Error(`Repository not found: ${owner}/${repo}`);
     } else if (error.status === 422) {
       throw new Error('GitHub repository creation failed: name already exists or invalid');
-    } else if (error.status === 403) {
-      throw new Error('GitHub authentication failed: check TEMPLATE_BOT_TOKEN permissions');
+    } else if (error.status === 401 || error.status === 403) {
+      throw new Error('GitHub authentication failed: please reconnect your GitHub account');
     } else {
       throw new Error(`Template generation failed: ${error.message || 'Unknown error'}`);
     }
