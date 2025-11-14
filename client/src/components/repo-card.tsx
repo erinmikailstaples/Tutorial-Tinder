@@ -147,32 +147,40 @@ export function RepoCard({
       </CardContent>
 
       <CardFooter className="flex flex-col gap-3 pt-4">
-        {/* Primary Action - Launch in Replit */}
-        <Button 
-          size="lg"
-          className="w-full font-semibold hover-elevate active-elevate-2"
-          onClick={handleLaunch}
-          disabled={isProcessing}
-          data-testid={`button-launch-${repo.id}`}
-        >
-          <Rocket className="mr-2 h-5 w-5" />
-          Launch in Replit
-        </Button>
-
-        {/* Convert to Template Action */}
+        {/* Primary Action - Convert to Template */}
         {onConvertToTemplate && (
           <Button 
-            size="default"
-            variant="secondary"
-            className="w-full font-medium hover-elevate active-elevate-2"
+            size="lg"
+            className="w-full font-semibold bg-blue-600 hover:bg-blue-700 border-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 dark:border-blue-700"
             onClick={onConvertToTemplate}
             disabled={isProcessing}
             data-testid={`button-convert-template-${repo.id}`}
           >
-            <Wand2 className="mr-2 h-4 w-4" />
+            <Wand2 className="mr-2 h-5 w-5" />
             {isProcessing ? 'Generating Template...' : 'Convert to Replit Template'}
           </Button>
         )}
+
+        {/* Secondary Action - Launch as-is in Replit */}
+        <Button 
+          size="default"
+          variant="secondary"
+          className="w-full font-medium hover-elevate active-elevate-2"
+          onClick={handleLaunch}
+          disabled={isProcessing}
+          data-testid={`button-launch-${repo.id}`}
+        >
+          <Rocket className="mr-2 h-4 w-4" />
+          Launch as-is in Replit
+        </Button>
+        
+        {/* Compatibility Callout */}
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-muted/50 border border-muted-foreground/20">
+          <Sparkles className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Not all repos are optimized for Replit. The template converter cleans and configures the repo for best results.
+          </p>
+        </div>
 
         {/* Secondary Actions */}
         <div className="flex gap-3 w-full">
