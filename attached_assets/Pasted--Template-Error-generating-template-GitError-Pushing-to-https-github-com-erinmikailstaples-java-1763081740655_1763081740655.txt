@@ -1,0 +1,119 @@
+[Template] Error generating template: GitError: Pushing to https://github.com/erinmikailstaples/javascript-todo-list-tutorial-replit-template-1763081710903.git
+2025-11-13 19:55:11.91
+9cabc493
+User
+error: src refspec main does not match any
+2025-11-13 19:55:11.91
+9cabc493
+User
+error: failed to push some refs to 'https://github.com/erinmikailstaples/javascript-todo-list-tutorial-replit-template-1763081710903.git'
+2025-11-13 19:55:11.91
+9cabc493
+User
+2025-11-13 19:55:11.91
+9cabc493
+User
+at Object.action (file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:4462:25)
+2025-11-13 19:55:11.91
+9cabc493
+User
+at PluginStore.exec (file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:4501:25)
+2025-11-13 19:55:11.91
+9cabc493
+User
+at file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:1345:43
+2025-11-13 19:55:11.91
+9cabc493
+User
+at new Promise ()
+2025-11-13 19:55:11.91
+9cabc493
+User
+at GitExecutorChain.handleTaskData (file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:1343:16)
+2025-11-13 19:55:11.91
+9cabc493
+User
+at GitExecutorChain.attemptRemoteTask (file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:1330:42)
+2025-11-13 19:55:11.91
+9cabc493
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-13 19:55:11.91
+9cabc493
+User
+at async GitExecutorChain.attemptTask (file:///home/runner/workspace/node_modules/simple-git/dist/esm/index.js:1302:18) {
+2025-11-13 19:55:11.91
+9cabc493
+User
+task: {
+2025-11-13 19:55:11.91
+9cabc493
+User
+commands: [
+2025-11-13 19:55:11.91
+9cabc493
+User
+'push',
+2025-11-13 19:55:11.91
+9cabc493
+User
+'origin',
+2025-11-13 19:55:11.91
+9cabc493
+User
+'main',
+2025-11-13 19:55:11.91
+9cabc493
+User
+'--set-upstream',
+2025-11-13 19:55:11.91
+9cabc493
+User
+'--verbose',
+2025-11-13 19:55:11.91
+9cabc493
+User
+'--porcelain'
+2025-11-13 19:55:11.91
+9cabc493
+User
+],
+2025-11-13 19:55:11.91
+9cabc493
+User
+format: 'utf-8',
+2025-11-13 19:55:11.91
+9cabc493
+User
+parser: [Function: parsePushResult]
+2025-11-13 19:55:11.91
+9cabc493
+User
+}
+2025-11-13 19:55:11.91
+9cabc493
+User
+}
+2025-11-13 19:55:11.93
+9cabc493
+User
+[Template] Error: Error: Template generation failed: Pushing to https://github.com/erinmikailstaples/javascript-todo-list-tutorial-replit-template-1763081710903.git
+2025-11-13 19:55:11.93
+9cabc493
+User
+error: src refspec main does not match any
+2025-11-13 19:55:11.93
+9cabc493
+User
+error: failed to push some refs to 'https://github.com/erinmikailstaples/javascript-todo-list-tutorial-replit-template-1763081710903.git'
+2025-11-13 19:55:11.93
+9cabc493
+User
+2025-11-13 19:55:11.93
+9cabc493
+User
+at generateTemplate (file:///home/runner/workspace/dist/index.js:877:13)
+2025-11-13 19:55:11.93
+9cabc493
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)

@@ -309,20 +309,23 @@ export async function generateTemplate(
     await repoGit.addConfig('user.name', 'Tutorial Tinder Bot');
     await repoGit.addConfig('user.email', 'bot@tutorial-tinder.app');
     
-    // Rename branch to 'main' if it's not already (git init may create 'master')
-    try {
-      const branches = await repoGit.branchLocal();
-      const currentBranch = branches.current || branches.all[0];
-      if (currentBranch && currentBranch !== 'main') {
-        await repoGit.branch(['-M', 'main']);
-        console.log(`[Template] Renamed branch from ${currentBranch} to main`);
-      }
-    } catch (branchError) {
-      console.log('[Template] Branch already named main or minor error:', branchError);
-    }
-    
+    // Make the initial commit first (this creates the branch)
     await repoGit.add('.');
     await repoGit.commit(`chore: generate Replit-friendly template from ${owner}/${repo}`);
+    
+    // AFTER the first commit, rename the branch to 'main' if needed
+    try {
+      const branches = await repoGit.branchLocal();
+      const currentBranch = branches.current;
+      if (currentBranch && currentBranch !== 'main') {
+        await repoGit.branch(['-M', 'main']);
+        console.log(`[Template] Renamed branch from '${currentBranch}' to 'main'`);
+      } else {
+        console.log('[Template] Branch already named main');
+      }
+    } catch (branchError) {
+      console.log('[Template] Warning: Could not rename branch:', branchError);
+    }
     
     // Create GitHub repo and push
     console.log('[Template] Step 6/6: Creating GitHub repository and pushing...');
