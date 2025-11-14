@@ -6,11 +6,6 @@ import { Octokit } from "@octokit/rest";
 const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID;
 const GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET;
 
-// Debug logging for client ID
-console.log('[GitHub OAuth] Client ID:', GITHUB_OAUTH_CLIENT_ID);
-console.log('[GitHub OAuth] Client ID length:', GITHUB_OAUTH_CLIENT_ID?.length);
-console.log('[GitHub OAuth] Client ID type:', typeof GITHUB_OAUTH_CLIENT_ID);
-
 // Helper to get the base URL for OAuth callbacks
 function getBaseUrl(req: any): string {
   return `${req.protocol}://${req.hostname}`;
