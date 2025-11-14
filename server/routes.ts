@@ -5,7 +5,7 @@ import { getListById, DEFAULT_LIST_ID } from "@shared/lists";
 import { generateProjectSuggestions } from "./ai";
 import { analyzeRepository } from "./preflight";
 import { generateTemplate } from "./template-generator";
-import type { ProjectSuggestion } from "@shared/schema";
+import type { ProjectSuggestion, TemplateResponse } from "@shared/schema";
 import { preflightRequestSchema, templateRequestSchema } from "@shared/schema";
 
 // In-memory cache for Reddit list to avoid GitHub rate limits
